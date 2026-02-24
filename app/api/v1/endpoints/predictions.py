@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
-from sqlalchemy.ext.asyncio import AsyncSession  # 1. นำเข้า AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.models.user import User
 from app.services.storage_service import storage_service
@@ -15,7 +15,7 @@ import uuid
 router = APIRouter()
 
 
-@router.post("/prediction-image", response_model=prediction_schema.Prediction)
+@router.post("/", response_model=prediction_schema.Prediction)
 async def upload_item_image(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(deps.get_db),
