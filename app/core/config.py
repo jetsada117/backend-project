@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     R2_SECRET_KEY: str
     R2_PUBLIC_URL: str = ""
 
+    HF: str
+
     class Config:
         env_file = ".env"
         extra = "ignore"

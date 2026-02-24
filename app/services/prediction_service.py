@@ -8,6 +8,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from tensorflow.keras.models import load_model
 from huggingface_hub import hf_hub_download
+from app.core.config import settings
 
 
 class MultiModelPredictor:
@@ -17,7 +18,9 @@ class MultiModelPredictor:
         print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
         def get_model(filename):
-            path = hf_hub_download(repo_id=REPO_ID, filename=filename)
+            path = hf_hub_download(
+                repo_id=REPO_ID, filename=filename, token=settings.HF
+            )
             return load_model(path)
 
         self.age_model = get_model("age_finetuned_model_convnext.keras")
