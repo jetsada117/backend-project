@@ -1,0 +1,15 @@
+# Python & Virtual Env
+.venv/
+__pycache__/
+*.pyc
+.python-version
+
+# Environment & Secrets
+.env
+alembic.ini
+
+# Logs & OS
+*.log
+.DS_Store
+
+*.keras
