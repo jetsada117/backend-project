@@ -12,4 +12,6 @@ alembic.ini
 *.log
 .DS_Store
 
+*.h5
 *.keras
+*.tflite
