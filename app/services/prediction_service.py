@@ -12,16 +12,14 @@ from huggingface_hub import hf_hub_download
 
 class MultiModelPredictor:
     def __init__(self):
-        REPO_ID = "YourUsername/face-classification-models"
+        REPO_ID = "Jetsada117/models_project"
 
         print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
-        # 2. ฟังก์ชันช่วยดาวน์โหลดและโหลดโมเดล
         def get_model(filename):
             path = hf_hub_download(repo_id=REPO_ID, filename=filename)
             return load_model(path)
 
-        # 3. โหลดโมเดลแต่ละตัว (ระบบจะจัดการดาวน์โหลดมาพักไว้ในเครื่องให้เอง)
         self.age_model = get_model("age_finetuned_model_convnext.keras")
         self.gender_model = get_model("gender_efficientnet_base_model.keras")
         self.haircolor_model = get_model(
