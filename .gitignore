@@ -12,6 +12,7 @@ alembic.ini
 *.log
 .DS_Store
 
+# Models
 *.h5
 *.keras
 *.tflite
