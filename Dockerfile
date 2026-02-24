@@ -1,9 +1,10 @@
-# ใช้ Python 3.10 เป็นฐาน
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /code
+
+ENV UV_PYTHON=python3.11
 
 COPY pyproject.toml uv.lock ./
 
