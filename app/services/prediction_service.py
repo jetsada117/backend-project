@@ -1,56 +1,39 @@
 # app/services/prediction_service.py
-import os
 import io
-import logging
-import warnings
+import os
 import asyncio
-import numpy as np
 from PIL import Image
+import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from tensorflow.keras.models import load_model
-
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-
-warnings.filterwarnings("ignore", category=UserWarning, module="keras")
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
-logging.getLogger("tensorflow").setLevel(logging.ERROR)
+from huggingface_hub import hf_hub_download
 
 
 class MultiModelPredictor:
     def __init__(self):
-        current_file_path = Path(__file__).resolve()
+        REPO_ID = "YourUsername/face-classification-models"
 
-        app_dir = current_file_path.parent.parent
+        print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
-        model_path = os.path.join(app_dir, "machine_models")
+        # 2. ฟังก์ชันช่วยดาวน์โหลดและโหลดโมเดล
+        def get_model(filename):
+            path = hf_hub_download(repo_id=REPO_ID, filename=filename)
+            return load_model(path)
 
-        print(f"Loading model from: {model_path}")
-
-        self.age_model = load_model(
-            os.path.join(model_path, "age_finetuned_model_convnext.keras")
+        # 3. โหลดโมเดลแต่ละตัว (ระบบจะจัดการดาวน์โหลดมาพักไว้ในเครื่องให้เอง)
+        self.age_model = get_model("age_finetuned_model_convnext.keras")
+        self.gender_model = get_model("gender_efficientnet_base_model.keras")
+        self.haircolor_model = get_model(
+            "haircolor_inceptionv3_finetuned_best_model.keras"
         )
-        self.gender_model = load_model(
-            os.path.join(model_path, "gender_efficientnet_base_model.keras")
+        self.hairstyle_model = get_model(
+            "hair_bald_inceptionv3_finetuned_best_model.keras"
         )
-        self.haircolor_model = load_model(
-            os.path.join(model_path, "haircolor_inceptionv3_finetuned_best_model.keras")
-        )
-        self.hairstyle_model = load_model(
-            os.path.join(model_path, "hair_bald_inceptionv3_finetuned_best_model.keras")
-        )
-        self.eyebrows_model = load_model(
-            os.path.join(model_path, "eyebrows_convnext_finetuned_model.keras")
-        )
-        self.skin_model = load_model(
-            os.path.join(model_path, "skin_inception_finetuned_model.keras")
-        )
-        self.beard_model = load_model(
-            os.path.join(
-                model_path, "beard_weight_classification_finetuned_convnext_model.keras"
-            )
+        self.eyebrows_model = get_model("eyebrows_convnext_finetuned_model.keras")
+        self.skin_model = get_model("skin_inception_finetuned_model.keras")
+        self.beard_model = get_model(
+            "beard_weight_classification_finetuned_convnext_model.keras"
         )
 
     def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
