@@ -15,3 +15,4 @@ class User(Base):
     last_name = Column(String(128), nullable=False)  # นามสกุล
     email = Column(String(255), unique=True, index=True, nullable=False)  # อีเมล
     hashed_password = Column(String(255), nullable=False)  # รหัสผ่านที่ถูกเข้ารหัส
+    role = Column(String(50), nullable=False, default="user")

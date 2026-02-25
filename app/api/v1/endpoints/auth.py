@@ -1,15 +1,14 @@
 from datetime import timedelta
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core import security
 from app.core.config import settings
 from app.schemas.token import Token
-from app.schemas.user import UserBase, UserCreate
+from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
-from app.services.storage_service import storage_service
 
 router = APIRouter()
 
@@ -27,23 +26,26 @@ async def login_access_token(
         raise HTTPException(status_code=400, detail="Incorrect email or password")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+
     return {
         "access_token": security.create_access_token(
-            user.id, expires_delta=access_token_expires
+            subject=user.id,
+            role=user.role,
+            expires_delta=access_token_expires,
         ),
         "refresh_token": security.create_refresh_token(user.id),
         "token_type": "bearer",
     }
 
 
-@router.post("/register", response_model=UserBase)
+@router.post("/register", response_model=UserResponse)
 async def register_user(
     *,
     db: AsyncSession = Depends(deps.get_db),
     user_in: UserCreate,
 ) -> Any:
-    user = await user_crud.get_user_by_email(db, email=user_in.email)
-    if user:
+    user_exists = await user_crud.get_user_by_email(db, email=user_in.email)
+    if user_exists:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
@@ -56,8 +58,6 @@ async def register_user(
 async def refresh_token(
     refresh_token: str,
 ) -> Any:
-    # In a real application, you should verify the refresh token and check if it's in the database or blacklist
-    # For simplicity, we just decode it and create a new access token
     try:
         payload = security.jwt.decode(
             refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
