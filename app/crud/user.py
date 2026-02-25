@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from app.schemas.user import UserBase, UserCreate, UserResponse
-
+from app.schemas.user import UserCreate, UserResponse, UserRole  # นำเข้า UserRole มาใช้
 from app.core.security import get_password_hash, verify_password
 
 
@@ -25,9 +24,11 @@ async def get_user_by_email(db: AsyncSession, email: str) -> UserResponse:
     return row
 
 
-# ฟังก์ชันสร้างผู้ใช้ใหม่
+# ฟังก์ชันสร้างผู้ใช้ใหม่ (สมัครสมาชิก)
 async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
     hashed_password = get_password_hash(user.password)
+
+    default_role = UserRole.USER.value
 
     sql = text(
         "INSERT INTO users (email, hashed_password, first_name, last_name, role) "
@@ -39,7 +40,7 @@ async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
         "hashed_password": hashed_password,
         "first_name": user.first_name,
         "last_name": user.last_name,
-        "role": user.role,
+        "role": default_role,
     }
 
     result = await db.execute(sql, param)
@@ -49,10 +50,9 @@ async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
     return UserResponse(
         id=new_id,
         email=user.email,
-        hashed_password=hashed_password,
         first_name=user.first_name,
         last_name=user.last_name,
-        role=user.role,
+        role=default_role,
     )
 
 

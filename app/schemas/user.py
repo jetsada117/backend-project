@@ -12,16 +12,18 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    role: Optional[UserRole] = UserRole.USER
 
 
 class UserCreate(UserBase):
     email: EmailStr
     password: str
+    first_name: str
+    last_name: str
 
 
 class UserUpdate(UserBase):
     password: Optional[str] = None
+    role: Optional[UserRole] = None
 
 
 class UserResponse(UserBase):
