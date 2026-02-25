@@ -18,9 +18,9 @@ pinned: false
 * **ML Models:** ConvNeXt & InceptionV3.
 
 ## 🌐 System URLs
-* **Live API (Production):** `https://Jetsada117/backend_project.hf.space`
-* **Interactive Documentation (Scalar):** `https://Jetsada117/backend_project.hf.space/scalar`
-* **Alternative Documentation (Swagger UI):** `https://Jetsada117/backend_project.hf.space/docs`
+* **Live API (Production):** `https://jetsada117-backend-project.hf.space/`
+* **Interactive Documentation (Scalar):** `https://jetsada117-backend-project.hf.space/scalar`
+* **Alternative Documentation (Swagger UI):** `https://jetsada117-backend-project.hf.space//docs`
 
 ## 📊 Data Structure (25-Dimensional Vector)
 ระบบจะแปลงผลลัพธ์จากการทำนายหรือคำบรรยายให้กลายเป็น Vector ขนาด 25 มิติ เพื่อใช้คำนวณความคล้ายคลึง (Similarity Score):
