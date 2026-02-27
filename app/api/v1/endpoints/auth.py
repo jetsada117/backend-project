@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.schemas.token import Token
 from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
-from app.services import storage_service
+from app.services.storage_service import storage_service
 
 router = APIRouter()
 
