@@ -74,7 +74,7 @@ class FeatureEncoder:
             "gender": None,
             "hair_color": None,
             "hair_style": None,
-            "eyebrow": None,
+            "eyebrow": [],
             "skin": None,
             "beard": [],
         }
@@ -143,6 +143,19 @@ class FeatureEncoder:
         )
 
         return np.array(full_vector)
+
+    def vector_to_text(self, vector):
+        """
+        ฟังก์ชันแปลง Vector [0, 1, 0, ...] กลับเป็นคำภาษาไทย
+        โดยอิงจาก index ของ self.all_columns
+        """
+        matched_features = []
+        # วนลูปเช็คว่าตำแหน่งไหนมีค่าเป็น 1 ให้ดึงคำภาษาไทยในตำแหน่งนั้นมา
+        for i, val in enumerate(vector):
+            if val == 1:
+                matched_features.append(self.all_columns[i])
+
+        return matched_features
 
     def to_dataframe(self, vector):
         """Helper Method สำหรับแสดงผลในรูปแบบ DataFrame แนวตั้ง"""

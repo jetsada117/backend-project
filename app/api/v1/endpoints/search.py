@@ -26,11 +26,14 @@ async def calculate_similarity(
 
         score = scorer.calculate_similarity(current_user_vector, db_vector)
 
+        thai_features = encoder.vector_to_text(db_vector)
+
         results.append(
             {
                 "id": item.id,
                 "image_url": item.image_url,
                 "similarity_score": round(score * 100, 2),
+                "features": thai_features,
             }
         )
 
