@@ -10,7 +10,7 @@ from app.api import deps
 router = APIRouter()
 
 
-@router.get("/")
+@router.get("")
 async def calculate_similarity(
     description: str = Query(..., description="คำบรรยายลักษณะใบหน้า"),
     limit: int = Query(4, ge=1, le=6, description="จำนวนผลลัพธ์สูงสุดที่ต้องการแสดง"),
