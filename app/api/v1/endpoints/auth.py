@@ -32,7 +32,7 @@ async def login_access_token(
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
     user = await user_crud.authenticate_user(
-        db, email=login_data.username, password=login_data.password
+        db, email=login_data.email, password=login_data.password
     )
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
