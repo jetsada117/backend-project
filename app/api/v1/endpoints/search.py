@@ -13,6 +13,7 @@ router = APIRouter()
 @router.get("/")
 async def calculate_similarity(
     description: str = Query(..., description="คำบรรยายลักษณะใบหน้า"),
+    limit: int = Query(4, ge=1, le=6, description="จำนวนผลลัพธ์สูงสุดที่ต้องการแสดง"),
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
@@ -35,4 +36,4 @@ async def calculate_similarity(
 
     results.sort(key=lambda x: x["similarity_score"], reverse=True)
 
-    return results[:5]
+    return results[:limit]
