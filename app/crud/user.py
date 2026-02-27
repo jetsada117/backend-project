@@ -48,14 +48,7 @@ async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
     new_id = result.lastrowid
     await db.commit()
 
-    return UserResponse(
-        id=new_id,
-        email=user.email,
-        first_name=user.first_name,
-        last_name=user.last_name,
-        role=default_role,
-        profile_image_url=user.profile_image_url,
-    )
+    return {"message": "Registration successful"}
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):

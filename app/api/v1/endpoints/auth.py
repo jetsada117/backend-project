@@ -47,10 +47,11 @@ async def login_access_token(
         ),
         "refresh_token": security.create_refresh_token(user.id),
         "token_type": "bearer",
+        "user": user,
     }
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register")
 async def register_user(
     *,
     db: AsyncSession = Depends(deps.get_db),
@@ -124,7 +125,7 @@ async def refresh_token(
         "access_token": security.create_access_token(
             token_data, expires_delta=access_token_expires
         ),
-        "refresh_token": refresh_token,  # Return the same refresh token or rotate it
+        "refresh_token": refresh_token,
         "token_type": "bearer",
     }
 
