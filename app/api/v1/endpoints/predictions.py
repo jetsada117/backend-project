@@ -19,7 +19,7 @@ router = APIRouter()
 async def upload_item_image(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(deps.get_db),
-    # current_user: User = Depends(deps.get_current_active_user),
+    current_user: User = Depends(deps.get_current_active_user),
 ):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
@@ -37,7 +37,10 @@ async def upload_item_image(
         )
 
     image_url = await storage_service.upload_file(
-        file_content=contents, file_name=new_file_name, content_type=file.content_type
+        file_content=contents,
+        file_name=new_file_name,
+        content_type=file.content_type,
+        folder="predictions",
     )
 
     prediction_data = prediction_schema.PredictionCreate(

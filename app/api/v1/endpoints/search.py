@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud import predictions as prediction_crud
+from app.models.user import User
 from app.services.encoding_service import encoder
 from app.services.cosine_similarity_service import scorer
 
@@ -13,6 +14,7 @@ router = APIRouter()
 async def calculate_similarity(
     description: str = Query(..., description="คำบรรยายลักษณะใบหน้า"),
     db: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(deps.get_current_active_user),
 ):
     current_user_vector = encoder.text_to_vector(description)
     db_predictions = await prediction_crud.get_prediction(db)

@@ -1,6 +1,17 @@
 from datetime import timedelta
+import os
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import uuid
+from fastapi import (
+    APIRouter,
+    Depends,
+    Form,
+    HTTPException,
+    status,
+    Request,
+    UploadFile,
+    File,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
@@ -9,6 +20,7 @@ from app.core.config import settings
 from app.schemas.token import Token
 from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
+from app.services import storage_service
 
 router = APIRouter()
 
@@ -42,14 +54,47 @@ async def login_access_token(
 async def register_user(
     *,
     db: AsyncSession = Depends(deps.get_db),
-    user_in: UserCreate,
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    file: UploadFile = File(...),
 ) -> Any:
-    user_exists = await user_crud.get_user_by_email(db, email=user_in.email)
+    user_exists = await user_crud.get_user_by_email(db, email=email)
+
     if user_exists:
         raise HTTPException(
             status_code=400,
             detail="The user with this email already exists in the system.",
         )
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
+
+    file_extension = os.path.splitext(file.filename)[1]
+    new_file_name = f"{uuid.uuid4()}{file_extension}"
+    contents = await file.read()
+
+    try:
+        image_url = await storage_service.upload_file(
+            file_content=contents,
+            file_name=new_file_name,
+            content_type=file.content_type,
+            folder="profile",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: {str(e)}"
+        )
+
+    user_in = UserCreate(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        password=password,
+        profile_image_url=image_url,
+    )
+
     user = await user_crud.register(db, user=user_in)
     return user
 

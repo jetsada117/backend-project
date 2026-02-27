@@ -7,7 +7,15 @@ class StorageService:
         self.session = aioboto3.Session()
         self.endpoint_url = f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-    async def upload_file(self, file_content: bytes, file_name: str, content_type: str):
+    async def upload_file(
+        self,
+        file_content: bytes,
+        file_name: str,
+        content_type: str,
+        folder: str = "predictions",
+    ):
+        full_path = f"{folder}/{file_name}"
+
         async with self.session.client(
             "s3",
             endpoint_url=self.endpoint_url,
@@ -17,11 +25,12 @@ class StorageService:
         ) as s3:
             await s3.put_object(
                 Bucket=settings.R2_BUCKET_NAME,
-                Key=file_name,
+                Key=full_path,
                 Body=file_content,
                 ContentType=content_type,
             )
-            return f"{settings.R2_PUBLIC_URL}/{file_name}"
+
+            return f"{settings.R2_PUBLIC_URL}/{full_path}"
 
 
 storage_service = StorageService()

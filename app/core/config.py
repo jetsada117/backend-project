@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     R2_SECRET_KEY: str
     R2_PUBLIC_URL: str = ""
 
+    # Huggingface  Settings
     HF: str
 
     class Config:

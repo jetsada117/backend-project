@@ -14,7 +14,6 @@ from app.crud import user as user_crud
 reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login")
 
 
-# เปลี่ยนจาก Generator ธรรมดา เป็น AsyncGenerator
 async def get_db() -> AsyncGenerator:
     async with SessionLocal() as db:
         try:

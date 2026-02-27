@@ -11,6 +11,7 @@ class User(Base):
     # String(255) กำหนดความยาวสูงสุดของสตริง
     # String ไม่ได้กำหนดความยาวสูงสุดจึงใช้สำหรับข้อมูลที่ยาวไม่จำกัด
     id = Column(Integer, primary_key=True, index=True)  # รหัสผู้ใช้
+    profile_image_url = Column(String(512), nullable=True)
     first_name = Column(String(128), nullable=False)  # ชื่อจริง
     last_name = Column(String(128), nullable=False)  # นามสกุล
     email = Column(String(255), unique=True, index=True, nullable=False)  # อีเมล
