@@ -50,7 +50,7 @@ async def upload_item_image(
     )
 
     saved_prediction = await prediction_crud.create_prediction(
-        db=db, prediction_data=prediction_data, user_id=1
+        db=db, prediction_data=prediction_data, user_id=current_user.id
     )
 
     return saved_prediction
