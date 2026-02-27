@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.core import security
 from app.core.config import settings
+from app.schemas.auth import LoginRequest
 from app.schemas.token import Token
 from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
@@ -27,12 +28,11 @@ router = APIRouter()
 
 @router.post("/login", response_model=Token)
 async def login_access_token(
-    request: Request,
+    login_data: LoginRequest,
     db: AsyncSession = Depends(deps.get_db),
-    form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Any:
     user = await user_crud.authenticate_user(
-        db, email=form_data.username, password=form_data.password
+        db, email=login_data.username, password=login_data.password
     )
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
