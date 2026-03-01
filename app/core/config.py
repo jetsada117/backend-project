@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     REDIS_URL: str
 
     # email project
-    SMTP_USER: str
-    SMTP_PASSWORD: str
+    GMAIL: str
+    BREVO_API_KEY: str
 
     class Config:
         env_file = ".env"
