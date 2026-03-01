@@ -1,11 +1,8 @@
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from pydantic import BaseModel
 
 
-class PredictionBase(BaseModel):
-    image_filename: str
-    image_url: str
-
+class PredictionFeatures(BaseModel):
     age_result: Optional[List[Any]] = None
     gender_result: Optional[List[Any]] = None
     haircolor_result: Optional[List[Any]] = None
@@ -31,9 +28,20 @@ class PredictionBase(BaseModel):
         )
 
 
+class PredictionBase(PredictionFeatures):
+    image_filename: str
+    image_url: str
+
+
 class PredictionCreate(PredictionBase):
     pass
 
 
 class Prediction(PredictionBase):
     id: int
+
+
+class PredictResponse(BaseModel):
+    message: str
+    features: PredictionFeatures
+    descriptions: Dict[str, str]
