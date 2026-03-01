@@ -56,8 +56,18 @@ async def login_access_token(
 
 @router.post("/request-otp")
 async def request_otp(
-    email: str = Form(...), background_tasks: BackgroundTasks = BackgroundTasks()
+    email: str = Form(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: AsyncSession = Depends(deps.get_db),
 ):
+    user_exists = await user_crud.get_user_by_email(db, email=email)
+
+    if user_exists:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+
     otp_code = str(random.randint(100000, 999999))
     await redis_service.save_otp(email, otp_code)
 
