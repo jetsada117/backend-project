@@ -9,7 +9,10 @@ def send_otp_email(email_to: str, otp_code: str):
     msg["From"] = settings.SMTP_USER
     msg["To"] = email_to
 
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_USER, email_to, msg.as_string())
+    try:
+        # เปลี่ยนจากการใช้ SMTP(587) มาเป็น SMTP_SSL(465)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(settings.SMTP_USER, email_to, msg.as_string())
+    except Exception as e:
+        print(f"Failed to send email: {e}")
