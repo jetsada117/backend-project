@@ -1,0 +1,19 @@
+import redis.asyncio as redis
+from app.core.config import settings
+
+# เชื่อมต่อแบบ Async เพื่อไม่ให้ Block การทำงานของ FastAPI
+redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
+
+
+async def save_otp(email: str, otp_code: str, expire_minutes: int = 5):
+    """บันทึก OTP พร้อมตั้งเวลาลบอัตโนมัติ [TTL]"""
+    await redis_client.setex(f"otp:{email}", expire_minutes * 60, otp_code)
+
+
+async def verify_otp(email: str, input_otp: str) -> bool:
+    """ตรวจสอบ OTP และลบทิ้งทันทีถ้าถูกต้อง"""
+    stored_otp = await redis_client.get(f"otp:{email}")
+    if stored_otp and stored_otp == input_otp:
+        await redis_client.delete(f"otp:{email}")
+        return True
+    return False

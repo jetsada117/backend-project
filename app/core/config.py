@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     # Huggingface  Settings
     HF: str
 
+    # Redis Could
+    REDIS_URL: str
+
+    # email project
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+
     class Config:
         env_file = ".env"
         extra = "ignore"

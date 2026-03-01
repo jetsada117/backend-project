@@ -1,9 +1,11 @@
 from datetime import timedelta
 import os
+import random
 from typing import Any
 import uuid
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     Form,
     HTTPException,
@@ -21,6 +23,7 @@ from app.schemas.auth import LoginRequest
 from app.schemas.token import Token
 from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
+from app.services import email_service, redis_service
 from app.services.storage_service import storage_service
 
 router = APIRouter()
@@ -51,6 +54,17 @@ async def login_access_token(
     }
 
 
+@router.post("/request-otp")
+async def request_otp(
+    email: str = Form(...), background_tasks: BackgroundTasks = BackgroundTasks()
+):
+    otp_code = str(random.randint(100000, 999999))
+    await redis_service.save_otp(email, otp_code)
+
+    background_tasks.add_task(email_service.send_otp_email, email, otp_code)
+    return {"message": "OTP sent to your email"}
+
+
 @router.post("/register")
 async def register_user(
     *,
@@ -60,7 +74,11 @@ async def register_user(
     email: str = Form(...),
     password: str = Form(...),
     file: UploadFile = File(...),
+    otp_code: str = Form(...),
 ) -> Any:
+    is_valid = await redis_service.verify_otp(email, otp_code)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
     user_exists = await user_crud.get_user_by_email(db, email=email)
 
     if user_exists:

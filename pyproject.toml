@@ -19,6 +19,7 @@ dependencies = [
     "pydantic[email]>=2.12.5",
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.22",
+    "redis>=7.2.1",
     "scalar-fastapi>=1.6.1",
     "slowapi>=0.1.9",
     "sqlalchemy>=2.0.46",
