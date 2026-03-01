@@ -68,7 +68,7 @@ async def request_otp(
             detail="The user with this email already exists in the system.",
         )
 
-    otp_code = str(random.randint(100000, 999999))
+    otp_code = str(random.randint(1000, 9999))
     await redis_service.save_otp(email, otp_code)
 
     background_tasks.add_task(email_service.send_otp_email, email, otp_code)
