@@ -3,8 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from scalar_fastapi import get_scalar_api_reference
-from services.prediction_service import predictor_service
-
+from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 
 
