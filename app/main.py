@@ -7,6 +7,11 @@ from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 
 
+app = FastAPI(title="fastapi")
+
+app.include_router(api_router, prefix="/api/v1")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
@@ -17,11 +22,6 @@ async def lifespan(app: FastAPI):
     yield
 
     print("Shutting down FastAPI application...")
-
-
-app = FastAPI(title="fastapi")
-
-app.include_router(api_router, prefix="/api/v1")
 
 
 @app.get("/", response_class=PlainTextResponse)
