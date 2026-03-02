@@ -88,7 +88,6 @@ async def save_item_prediction(
         **predictions_dict,
     )
 
-    # current_user.id
     saved_prediction = await prediction_crud.create_prediction(
         db=db, prediction_data=prediction_data, user_id=current_user.id
     )

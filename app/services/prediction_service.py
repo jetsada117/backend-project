@@ -6,15 +6,29 @@ from PIL import Image
 import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model  # type: ignore
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
 
 
 class MultiModelPredictor:
     def __init__(self):
-        REPO_ID = "Jetsada117/models_project"
+        self.age_model = None
+        self.age_regression_model = None
+        self.gender_model = None
+        self.haircolor_model = None
+        self.hairstyle_model = None
+        self.eyebrows_model = None
+        self.skin_model = None
+        self.beard_model = None
+        self.is_loaded = False
 
+    def load_models(self):
+        """ฟังก์ชันสำหรับโหลดโมเดลเก็บไว้ใน Class (ทำหน้าที่เป็น In-memory Cache)"""
+        if self.is_loaded:
+            return
+
+        REPO_ID = "Jetsada117/models_project"
         print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
         def get_model(filename):
@@ -24,6 +38,9 @@ class MultiModelPredictor:
             return load_model(path)
 
         self.age_model = get_model("age_finetuned_model_convnext.keras")
+        self.age_regression_model = get_model(
+            "age_convnext_finetuned_regression_model.keras"
+        )
         self.gender_model = get_model("gender_efficientnet_base_model.keras")
         self.haircolor_model = get_model(
             "haircolor_inceptionv3_finetuned_best_model.keras"
@@ -36,6 +53,30 @@ class MultiModelPredictor:
         self.beard_model = get_model(
             "beard_weight_classification_finetuned_convnext_model.keras"
         )
+
+        self.is_loaded = True
+        print("All models loaded successfully!")
+
+    def _map_age_to_range(self, age: float) -> list:
+        """
+        แปลงอายุที่เป็นตัวเลข (float) เป็น One-hot encoding ตามช่วงวัยที่ต้องการ
+        ตัวอย่าง: [0-18, 19-35, 36-50, 50+]
+        """
+        if age <= 18:
+            return [1, 0, 0, 0]
+        elif age <= 35:
+            return [0, 1, 0, 0]
+        elif age <= 50:
+            return [0, 0, 1, 0]
+        else:
+            return [0, 0, 0, 1]
+
+    def _predict_age_regression(self, image_bytes: bytes):
+        processed_image = self.preprocess_image(image_bytes, img_size=224)
+
+        pred_age = self.age_regression_model.predict(processed_image)[0][0]
+
+        return self._map_age_to_range(pred_age)
 
     def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
         """
@@ -135,7 +176,9 @@ class MultiModelPredictor:
 
                 return haircolor_res, hairstyle_res
 
-            task_age = loop.run_in_executor(pool, self._predict_age, image_bytes)
+            task_age = loop.run_in_executor(
+                pool, self._predict_age_regression, image_bytes
+            )
             task_gender = loop.run_in_executor(pool, self._predict_gender, image_bytes)
             task_hair = get_hair_features()
             task_eyebrows = loop.run_in_executor(

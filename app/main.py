@@ -1,8 +1,24 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from scalar_fastapi import get_scalar_api_reference
+from services.prediction_service import predictor_service
 
 from app.api.v1.api import api_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    print("Starting up FastAPI application...")
+
+    predictor_service.load_models()
+
+    yield
+
+    print("Shutting down FastAPI application...")
+
 
 app = FastAPI(title="fastapi")
 
