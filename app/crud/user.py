@@ -58,3 +58,35 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     if not verify_password(password, user.hashed_password):
         return None
     return user
+
+
+async def update_user_profile_image(
+    db: AsyncSession, user_id: int, profile_image_url: str
+):
+    """
+    อัปเดต URL ของภาพโปรไฟล์ของผู้ใช้
+    """
+    sql = text("UPDATE users SET profile_image_url = :profile_image_url WHERE id = :id")
+    param = {"profile_image_url": profile_image_url, "id": user_id}
+
+    await db.execute(sql, param)
+    await db.commit()
+
+    return {"message": "Profile image updated successfully"}
+
+
+async def update_user_name(
+    db: AsyncSession, user_id: int, first_name: str, last_name: str
+):
+    """
+    อัปเดตชื่อและนามสกุลของผู้ใช้
+    """
+    sql = text(
+        "UPDATE users SET first_name = :first_name, last_name = :last_name WHERE id = :id"
+    )
+    param = {"first_name": first_name, "last_name": last_name, "id": user_id}
+
+    await db.execute(sql, param)
+    await db.commit()
+
+    return {"message": "User name updated successfully"}

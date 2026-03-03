@@ -4,7 +4,6 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core import config
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.user import User

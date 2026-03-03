@@ -32,5 +32,30 @@ class StorageService:
 
             return f"{settings.R2_PUBLIC_URL}/{full_path}"
 
+    async def delete_file(self, file_url_or_key: str):
+        """
+        ฟังก์ชันสำหรับลบไฟล์ออกจาก Cloudflare R2
+        รองรับทั้งการส่ง Path ตรงๆ (เช่น 'predictions/image.jpg')
+        และการส่ง Full URL (เช่น 'https://your-public-url.com/predictions/image.jpg')
+        """
+
+        if file_url_or_key.startswith(settings.R2_PUBLIC_URL):
+            file_key = file_url_or_key.replace(f"{settings.R2_PUBLIC_URL}/", "")
+        else:
+            file_key = file_url_or_key
+
+        async with self.session.client(
+            "s3",
+            endpoint_url=self.endpoint_url,
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            region_name="auto",
+        ) as s3:
+            await s3.delete_object(
+                Bucket=settings.R2_BUCKET_NAME,
+                Key=file_key,
+            )
+            print(f"Deleted file successfully: {file_key}")
+
 
 storage_service = StorageService()
