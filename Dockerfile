@@ -14,4 +14,4 @@ COPY . /code
 
 ENV PATH="/code/.venv/bin:$PATH"
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--access-log", "--log-level", "info"]
