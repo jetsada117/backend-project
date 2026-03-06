@@ -6,7 +6,7 @@ from PIL import Image
 import numpy as np
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import load_model  # type: ignore
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
 
