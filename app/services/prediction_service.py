@@ -51,6 +51,22 @@ class MultiModelPredictor:
         self.is_loaded = True
         print("All models loaded successfully!")
 
+    def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
+        """
+        ฟังก์ชันสำหรับเตรียมรูปภาพก่อนเข้าโมเดล
+        """
+        img = Image.open(io.BytesIO(image_bytes))
+        img = img.convert("RGB")
+        img = img.resize((img_size, img_size))
+
+        img_array = np.array(img, dtype=np.float32)
+
+        if rescale:
+            img_array = img_array / 255.0
+
+        img_array = np.expand_dims(img_array, axis=0)
+        return img_array
+
     def _map_age_to_range(self, age: float) -> list:
         """
         แปลงอายุที่เป็นตัวเลข (float) เป็น One-hot encoding ตามช่วงวัยที่ต้องการ
@@ -76,22 +92,6 @@ class MultiModelPredictor:
 
         return self._map_age_to_range(pred_age)
 
-    def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
-        """
-        ฟังก์ชันสำหรับเตรียมรูปภาพก่อนเข้าโมเดล
-        """
-        img = Image.open(io.BytesIO(image_bytes))
-        img = img.convert("RGB")
-        img = img.resize((img_size, img_size))
-
-        img_array = np.array(img, dtype=np.float32)
-
-        if rescale:
-            img_array = img_array / 255.0
-
-        img_array = np.expand_dims(img_array, axis=0)
-        return img_array
-
     def _predict_age(self, image_bytes: bytes):
         processed_image = self.preprocess_image(image_bytes, img_size=224)
         pred_probs = self.age_model.predict(processed_image)[0]
@@ -102,15 +102,13 @@ class MultiModelPredictor:
         return result
 
     def _predict_gender(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(
-            image_bytes, img_size=224, rescale=False
-        )
+        processed_image = self.preprocess_image(image_bytes, img_size=224, rescale=True)
         pred_prob = self.gender_model.predict(processed_image)[0][0]
 
         return [0, 1] if pred_prob > 0.5 else [1, 0]
 
     def _predict_haircolor(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=299)
+        processed_image = self.preprocess_image(image_bytes, img_size=224, rescale=True)
         pred_probs = self.haircolor_model.predict(processed_image)[0]
 
         predicted_index = np.argmax(pred_probs)
