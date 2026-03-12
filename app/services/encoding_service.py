@@ -4,7 +4,7 @@ import pandas as pd
 
 class FeatureEncoder:
     def __init__(self):
-        self.age_cats = [
+        self.age_categories = [
             "วัยเด็กเล็ก",
             "วัยเด็กโต",
             "วัยรุ่น",
@@ -12,43 +12,44 @@ class FeatureEncoder:
             "วัยผู้ใหญ่ตอนกลาง",
             "วัยสูงอายุ",
         ]
-        self.gender_cats = [
+        self.gender_categories = [
             "หญิง",
             "ชาย",
         ]
-        self.hair_color_cats = [
+        self.hair_color_categories = [
             "ผมน้ำตาล",
             "ผมบลอนด์",
             "ผมดำ",
         ]
-        self.hair_style_cats = ["ผมตรง", "ผมหยักศก"]
-        self.eyebrow_cats = [
+        self.hair_style_categories = ["ผมตรง", "ผมหยักศก"]
+        self.eyebrow_categories = [
             "คิ้วโก่ง",
             "คิ้วหนา",
             "คิ้วตรง",
             "คิ้วบาง",
         ]
-        self.skin_cats = [
+        self.skin_categories = [
             "ผิวขาว",
             "ผิวขาวเหลือง",
             "ผิวสองสี",
             "ผิวคล้ำ",
         ]
-        self.beard_cats = [
+        self.beard_categories = [
             "หนวดเคราบาง",
             "หนวดเข้ม",
             "เคราแพะ",
             "จอน",
         ]
 
-        self.all_columns = (
-            self.age_cats
-            + self.gender_cats
-            + self.hair_color_cats
-            + self.hair_style_cats
-            + self.eyebrow_cats
-            + self.skin_cats
-            + self.beard_cats
+        # รวมชื่อ Feature ทั้งหมดตามลำดับ
+        self.feature_names = (
+            self.age_categories
+            + self.gender_categories
+            + self.hair_color_categories
+            + self.hair_style_categories
+            + self.eyebrow_categories
+            + self.skin_categories
+            + self.beard_categories
         )
 
         self.age_mapping = {
@@ -61,15 +62,15 @@ class FeatureEncoder:
         }
 
     def _encode_one_hot(self, target_value, category_list):
-        return [1 if target_value == cat else 0 for cat in category_list]
+        return [1 if target_value == category else 0 for category in category_list]
 
     def _encode_multi_hot(self, target_list, category_list):
-        return [1 if cat in target_list else 0 for cat in category_list]
+        return [1 if category in target_list else 0 for category in category_list]
 
     def parse_text(self, text):
-        """ฟังก์ชันแปลข้อความเป็น Dictionary"""
+        """ฟังก์ชันสกัดข้อมูลจากข้อความให้อยู่ในรูปแบบ Dictionary"""
         text = text.replace(" ", "")
-        data = {
+        extracted_features = {
             "age": None,
             "gender": None,
             "hair_color": None,
@@ -79,42 +80,42 @@ class FeatureEncoder:
             "beard": [],
         }
 
-        for cat in self.gender_cats:
-            if cat in text:
-                data["gender"] = cat
+        for category in self.gender_categories:
+            if category in text:
+                extracted_features["gender"] = category
 
-        for cat in self.hair_color_cats:
-            if cat in text or cat.replace("ผม", "") in text:
-                data["hair_color"] = cat
+        for category in self.hair_color_categories:
+            if category in text or category.replace("ผม", "") in text:
+                extracted_features["hair_color"] = category
 
-        for cat in self.hair_style_cats:
-            if cat in text or cat.replace("ผม", "") in text:
-                data["hair_style"] = cat
+        for category in self.hair_style_categories:
+            if category in text or category.replace("ผม", "") in text:
+                extracted_features["hair_style"] = category
 
-        for cat in self.eyebrow_cats:
-            if cat in text:
-                data["eyebrow"] = cat
+        for category in self.eyebrow_categories:
+            if category in text:
+                extracted_features["eyebrow"] = category
 
-        for cat in sorted(self.skin_cats, key=len, reverse=True):
-            if cat in text:
-                data["skin"] = cat
+        for category in sorted(self.skin_categories, key=len, reverse=True):
+            if category in text:
+                extracted_features["skin"] = category
                 break
 
         for key, value in self.age_mapping.items():
             if key in text:
-                data["age"] = value
+                extracted_features["age"] = value
 
         # ดักหมวด Multi-label
         if "หนวดเคราบาง" in text:
-            data["beard"].append("หนวดเคราบาง")
+            extracted_features["beard"].append("หนวดเคราบาง")
         elif "หนวดเข้ม" in text or "หนวด" in text:
-            data["beard"].append("หนวดเข้ม")
+            extracted_features["beard"].append("หนวดเข้ม")
         if "เคราแพะ" in text:
-            data["beard"].append("เคราแพะ")
+            extracted_features["beard"].append("เคราแพะ")
         if "จอน" in text:
-            data["beard"].append("จอน")
+            extracted_features["beard"].append("จอน")
 
-        return data
+        return extracted_features
 
     def text_to_vector(self, text, verbose=False):
         """ฟังก์ชันแปลงข้อความให้เป็น Vector"""
@@ -123,43 +124,47 @@ class FeatureEncoder:
         if verbose:
             print(f"ตีความได้ว่า: {parsed_data}")
 
-        full_vector = []
-        full_vector.extend(self._encode_one_hot(parsed_data["age"], self.age_cats))
-        full_vector.extend(
-            self._encode_one_hot(parsed_data["gender"], self.gender_cats)
+        encoded_vector = []
+        encoded_vector.extend(
+            self._encode_one_hot(parsed_data["age"], self.age_categories)
         )
-        full_vector.extend(
-            self._encode_one_hot(parsed_data["hair_color"], self.hair_color_cats)
+        encoded_vector.extend(
+            self._encode_one_hot(parsed_data["gender"], self.gender_categories)
         )
-        full_vector.extend(
-            self._encode_one_hot(parsed_data["hair_style"], self.hair_style_cats)
+        encoded_vector.extend(
+            self._encode_one_hot(parsed_data["hair_color"], self.hair_color_categories)
         )
-        full_vector.extend(
-            self._encode_multi_hot(parsed_data["eyebrow"], self.eyebrow_cats)
+        encoded_vector.extend(
+            self._encode_one_hot(parsed_data["hair_style"], self.hair_style_categories)
         )
-        full_vector.extend(self._encode_one_hot(parsed_data["skin"], self.skin_cats))
-        full_vector.extend(
-            self._encode_multi_hot(parsed_data["beard"], self.beard_cats)
+        encoded_vector.extend(
+            self._encode_multi_hot(parsed_data["eyebrow"], self.eyebrow_categories)
+        )
+        encoded_vector.extend(
+            self._encode_one_hot(parsed_data["skin"], self.skin_categories)
+        )
+        encoded_vector.extend(
+            self._encode_multi_hot(parsed_data["beard"], self.beard_categories)
         )
 
-        return np.array(full_vector)
+        return np.array(encoded_vector)
 
     def vector_to_text(self, vector):
         """
         ฟังก์ชันแปลง Vector [0, 1, 0, ...] กลับเป็นคำภาษาไทย
-        โดยอิงจาก index ของ self.all_columns
+        โดยอิงจาก index ของ self.feature_names
         """
         matched_features = []
         # วนลูปเช็คว่าตำแหน่งไหนมีค่าเป็น 1 ให้ดึงคำภาษาไทยในตำแหน่งนั้นมา
         for i, val in enumerate(vector):
             if val == 1:
-                matched_features.append(self.all_columns[i])
+                matched_features.append(self.feature_names[i])
 
         return matched_features
 
     def to_dataframe(self, vector):
         """Helper Method สำหรับแสดงผลในรูปแบบ DataFrame แนวตั้ง"""
-        df = pd.DataFrame([vector], columns=self.all_columns)
+        df = pd.DataFrame([vector], columns=self.feature_names)
         return df.T
 
 

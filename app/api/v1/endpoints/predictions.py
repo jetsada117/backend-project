@@ -12,6 +12,7 @@ from app.services.prediction_service import predictor_service
 from app.services.encoding_service import encoder
 from app.crud import predictions as prediction_crud
 from app.schemas import predictions as prediction_schema
+import numpy as np
 
 router = APIRouter()
 
@@ -66,6 +67,40 @@ async def save_item_prediction(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
 
+    # --- ส่วนที่ 1: แปลง Array เป็น Varchar (Text) ---
+    try:
+        age_text = encoder.age_categories[np.argmax(predictions_dict["age_result"])]
+        gender_text = encoder.gender_categories[
+            np.argmax(predictions_dict["gender_result"])
+        ]
+        haircolor_text = encoder.hair_color_categories[
+            np.argmax(predictions_dict["haircolor_result"])
+        ]
+        hairstyle_text = encoder.hair_style_categories[
+            np.argmax(predictions_dict["hairstyle_result"])
+        ]
+        skin_text = encoder.skin_categories[np.argmax(predictions_dict["skin_result"])]
+
+        # Multi-label
+        eyebrow_texts = [
+            cat
+            for i, cat in enumerate(encoder.eyebrow_categories)
+            if predictions_dict["eyebrows_result"][i] == 1
+        ]
+        eyebrow_string = ", ".join(eyebrow_texts) or "ไม่ระบุ"
+
+        beard_texts = [
+            cat
+            for i, cat in enumerate(encoder.beard_categories)
+            if predictions_dict["beard_result"][i] == 1
+        ]
+        beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
+    except (KeyError, IndexError) as e:
+        raise HTTPException(
+            status_code=400, detail=f"ข้อมูล Array ที่ส่งมาไม่ครบหรือไม่ถูกต้อง: {str(e)}"
+        )
+    # ----------------------------------------------
+
     contents = await file.read()
     file_extension = os.path.splitext(file.filename)[1]
     new_file_name = f"{uuid.uuid4()}{file_extension}"
@@ -82,10 +117,17 @@ async def save_item_prediction(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: {str(e)}"
         )
 
+    # --- ส่วนที่ 2: ส่งค่า String เข้า Schema ---
     prediction_data = prediction_schema.PredictionCreate(
         image_filename=new_file_name,
         image_url=image_url,
-        **predictions_dict,
+        age_result=age_text,
+        gender_result=gender_text,
+        haircolor_result=haircolor_text,
+        hairstyle_result=hairstyle_text,
+        eyebrows_result=eyebrow_string,
+        skin_result=skin_text,
+        beard_result=beard_string,
     )
 
     saved_prediction = await prediction_crud.create_prediction(

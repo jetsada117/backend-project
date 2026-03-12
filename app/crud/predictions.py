@@ -30,13 +30,13 @@ async def create_prediction(
     params = {
         "image_filename": data_dict["image_filename"],
         "image_url": data_dict["image_url"],
-        "age_result": json.dumps(data_dict["age_result"]),
-        "gender_result": json.dumps(data_dict["gender_result"]),
-        "haircolor_result": json.dumps(data_dict["haircolor_result"]),
-        "hairstyle_result": json.dumps(data_dict["hairstyle_result"]),
-        "eyebrows_result": json.dumps(data_dict["eyebrows_result"]),
-        "skin_result": json.dumps(data_dict["skin_result"]),
-        "beard_result": json.dumps(data_dict["beard_result"]),
+        "age_result": data_dict["age_result"],
+        "gender_result": data_dict["gender_result"],
+        "haircolor_result": data_dict["haircolor_result"],
+        "hairstyle_result": data_dict["hairstyle_result"],
+        "eyebrows_result": data_dict["eyebrows_result"],
+        "skin_result": data_dict["skin_result"],
+        "beard_result": data_dict["beard_result"],
         "user_id": user_id,
     }
 

@@ -18,22 +18,35 @@ async def calculate_similarity(
     current_user: User = Depends(deps.get_current_active_user),
 ):
     current_user_vector = encoder.text_to_vector(description)
+
     db_predictions = await prediction_crud.get_prediction(db)
 
     results = []
     for item in db_predictions:
-        db_vector = item.feature_vector
+        db_text_features = (
+            f"{item.age_result or ''} "
+            f"{item.gender_result or ''} "
+            f"{item.haircolor_result or ''} "
+            f"{item.hairstyle_result or ''} "
+            f"{item.eyebrows_result or ''} "
+            f"{item.skin_result or ''} "
+            f"{item.beard_result or ''}"
+        ).strip()
+
+        db_vector = encoder.text_to_vector(db_text_features)
 
         score = scorer.calculate_similarity(current_user_vector, db_vector)
 
-        thai_features = encoder.vector_to_text(db_vector)
+        thai_features_list = [
+            feature.strip() for feature in db_text_features.split() if feature.strip()
+        ]
 
         results.append(
             {
-                "id": item.id,
+                "id": item.prediction_id,
                 "image_url": item.image_url,
                 "similarity_score": round(score * 100, 2),
-                "features": thai_features,
+                "features": thai_features_list,
             }
         )
 
