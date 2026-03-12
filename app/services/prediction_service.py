@@ -41,18 +41,12 @@ class MultiModelPredictor:
         self.age_regression_model = get_model(
             "age_convnext_finetuned_regression_model.keras"
         )
-        self.gender_model = get_model("gender_efficientnet_base_model.keras")
-        self.haircolor_model = get_model(
-            "haircolor_inceptionv3_finetuned_best_model.keras"
-        )
-        self.hairstyle_model = get_model(
-            "hair_bald_inceptionv3_finetuned_best_model.keras"
-        )
-        self.eyebrows_model = get_model("eyebrows_convnext_finetuned_model.keras")
-        self.skin_model = get_model("skin_inception_finetuned_model.keras")
-        self.beard_model = get_model(
-            "beard_weight_classification_finetuned_convnext_model.keras"
-        )
+        self.gender_model = get_model("gender_best_model_convnext.keras")
+        self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
+        self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
+        self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
+        self.skin_model = get_model("skin_best_model_inception.keras")
+        self.beard_model = get_model("beard_best_model_convnext.keras")
 
         self.is_loaded = True
         print("All models loaded successfully!")
