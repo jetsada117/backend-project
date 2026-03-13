@@ -23,23 +23,19 @@ async def calculate_similarity(
 
     results = []
     for item in db_predictions:
-        db_text_features = (
-            f"{item.age_result or ''} "
-            f"{item.gender_result or ''} "
-            f"{item.haircolor_result or ''} "
-            f"{item.hairstyle_result or ''} "
-            f"{item.eyebrows_result or ''} "
-            f"{item.skin_result or ''} "
-            f"{item.beard_result or ''}"
-        ).strip()
-
-        db_vector = encoder.text_to_vector(db_text_features)
+        db_vector = (
+            item.age_result
+            + item.gender_result
+            + item.haircolor_result
+            + item.hairstyle_result
+            + item.eyebrows_result
+            + item.skin_result
+            + item.beard_result
+        )
 
         score = scorer.calculate_similarity(current_user_vector, db_vector)
 
-        thai_features_list = [
-            feature.strip() for feature in db_text_features.split() if feature.strip()
-        ]
+        thai_features_list = encoder.vector_to_text(db_vector)
 
         results.append(
             {

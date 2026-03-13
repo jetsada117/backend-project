@@ -45,7 +45,7 @@ async def create_prediction(
 
     inserted_id = result.lastrowid
 
-    return {"id": inserted_id, "user_id": user_id, **data_dict}
+    return {"prediction_id": inserted_id, "user_id": user_id, **data_dict}
 
 
 async def get_prediction(db: AsyncSession) -> List[Prediction]:
