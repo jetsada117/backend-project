@@ -1,5 +1,5 @@
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class RawPredictionFeatures(BaseModel):
@@ -22,6 +22,8 @@ class PredictionBase(BaseModel):
     image_filename: str
     image_url: str
 
+
+class PredictionCreate(PredictionBase):
     age_result: str
     gender_result: str
     haircolor_result: str
@@ -31,10 +33,14 @@ class PredictionBase(BaseModel):
     beard_result: str
 
 
-class PredictionCreate(PredictionBase):
-    pass
-
-
 class Prediction(PredictionBase):
-    id: int
+    prediction_id: int
     user_id: Optional[int] = None
+
+    age_result: List[int]
+    gender_result: List[int]
+    haircolor_result: List[int]
+    hairstyle_result: List[int]
+    eyebrows_result: List[int]
+    skin_result: List[int]
+    beard_result: List[int]
