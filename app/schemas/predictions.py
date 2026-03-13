@@ -37,10 +37,10 @@ class Prediction(PredictionBase):
     prediction_id: int
     user_id: Optional[int] = None
 
-    age_result: List[int]
-    gender_result: List[int]
-    haircolor_result: List[int]
-    hairstyle_result: List[int]
-    eyebrows_result: List[int]
-    skin_result: List[int]
-    beard_result: List[int]
+    age_result: str
+    gender_result: str
+    haircolor_result: str
+    hairstyle_result: str
+    eyebrows_result: str
+    skin_result: str
+    beard_result: str

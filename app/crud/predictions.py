@@ -49,9 +49,6 @@ async def create_prediction(
 
 
 async def get_prediction(db: AsyncSession) -> List[Prediction]:
-    """
-    ดึงข้อมูลด้วย Raw SQL และแปลงเป็น Pydantic Schema
-    """
     query = text(
         """
         SELECT 
@@ -64,36 +61,14 @@ async def get_prediction(db: AsyncSession) -> List[Prediction]:
             hairstyle_result, 
             eyebrows_result, 
             skin_result, 
-            beard_result
+            beard_result,
+            user_id
         FROM predictions
     """
     )
-
     result = await db.execute(query)
     rows = result.mappings().all()
 
-    predictions_list = []
-    for row in rows:
-        row_dict = dict(row)
-
-        json_fields = [
-            "age_result",
-            "gender_result",
-            "haircolor_result",
-            "hairstyle_result",
-            "eyebrows_result",
-            "skin_result",
-            "beard_result",
-        ]
-
-        for field in json_fields:
-            if isinstance(row_dict.get(field), str):
-                try:
-                    row_dict[field] = json.loads(row_dict[field])
-                except Exception:
-                    row_dict[field] = []
-
-        prediction_model = Prediction(**row_dict)
-        predictions_list.append(prediction_model)
+    predictions_list = [Prediction(**dict(row)) for row in rows]
 
     return predictions_list
