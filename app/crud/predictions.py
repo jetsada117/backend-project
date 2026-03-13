@@ -55,7 +55,7 @@ async def get_prediction(db: AsyncSession) -> List[Prediction]:
     query = text(
         """
         SELECT 
-            id, 
+            prediction_id, 
             image_filename, 
             image_url, 
             age_result, 
