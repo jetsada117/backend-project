@@ -9,12 +9,12 @@ class FaceSimilarityScorer:
         # 1. กำหนดค่าน้ำหนัก Default (ถ้าไม่มีการส่งค่าใหม่เข้ามาตอนสร้าง Object)
         self.weight_config = weight_config or {
             "age": 0.15,  # ช่วงวัย
-            "gender": 0.20,  # เพศ
-            "hair_color": 0.10,  # สีผม
-            "hair_style": 0.10,  # ลักษณะผม
+            "gender": 0.40,  # เพศ
+            "hair_color": 0.5,  # สีผม
+            "hair_style": 0.5,  # ลักษณะผม
             "eyebrow": 0.10,  # คิ้ว
             "skin": 0.20,  # สีผิว
-            "beard": 0.15,  # หนวดเครา
+            "beard": 0.5,  # หนวดเครา
         }
 
         # 2. กำหนดขนาดของคลาส (One-Hot length) ของแต่ละ Feature
@@ -56,17 +56,20 @@ class FaceSimilarityScorer:
         """
         A = np.array(vector_a)
         B = np.array(vector_b)
-        w = self.expanded_weights
+        w = self.expanded_weights.copy()
 
         if len(A) != len(w) or len(B) != len(w):
-            raise ValueError(
-                f"ความยาวของ Vector ไม่ถูกต้อง (ต้องการ: {len(w)}, แต่ได้ A: {len(A)}, B: {len(B)})"
-            )
+            raise ValueError("ความยาวของ Vector ไม่ถูกต้อง")
 
-        # สูตรคำนวณ Weighted Cosine Similarity
-        numerator = np.sum(w * A * B)
-        num_a = np.sqrt(np.sum(w * (A**2)))
-        num_b = np.sqrt(np.sum(w * (B**2)))
+        active_mask = A != 0
+        dynamic_w = w * active_mask
+
+        if np.sum(dynamic_w) == 0:
+            return 0.0
+
+        numerator = np.sum(dynamic_w * A * B)
+        num_a = np.sqrt(np.sum(dynamic_w * (A**2)))
+        num_b = np.sqrt(np.sum(dynamic_w * (B**2)))
 
         if num_a == 0 or num_b == 0:
             return 0.0
