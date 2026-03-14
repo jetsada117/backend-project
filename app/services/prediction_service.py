@@ -58,22 +58,22 @@ class MultiModelPredictor:
         self.is_loaded = True
         print("All models loaded successfully!")
 
-    def preprocess_image(
-        self, image_bytes: bytes, img_size: int, model_type: str = "convnext"
-    ):
-        img = (
-            Image.open(io.BytesIO(image_bytes))
-            .convert("RGB")
-            .resize((img_size, img_size))
-        )
+    def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
+        """
+        ฟังก์ชันสำหรับเตรียมรูปภาพก่อนเข้าโมเดล
+        """
+        img = Image.open(io.BytesIO(image_bytes))
+        img = img.convert("RGB")
+        img = img.resize((img_size, img_size))
         img_array = np.array(img, dtype=np.float32)
+
+        if rescale:
+
+            img_array = img_array / 255.0
+
         img_array = np.expand_dims(img_array, axis=0)
 
-        if model_type == "convnext":
-            return convnext_preprocess(img_array)
-        elif model_type == "inception":
-            return inception_preprocess(img_array)
-        return img_array / 255.0
+        return img_array
 
     def _map_age_to_range(self, age: float) -> list:
         """
