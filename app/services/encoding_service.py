@@ -105,11 +105,10 @@ class FeatureEncoder:
             if key in text:
                 extracted_features["age"] = value
 
-        # ดักหมวด Multi-label
-        if "หนวดเคราบาง" in text:
-            extracted_features["beard"].append("หนวดเคราบาง")
-        elif "หนวดเข้ม" in text or "หนวด" in text:
-            extracted_features["beard"].append("หนวดเข้ม")
+        if "เคราบาง" in text:
+            extracted_features["beard"].append("เคราบาง")
+        elif "หนวด" in text:
+            extracted_features["beard"].append("หนวด")
         if "เคราแพะ" in text:
             extracted_features["beard"].append("เคราแพะ")
         if "จอน" in text:
