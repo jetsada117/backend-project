@@ -35,8 +35,8 @@ class FeatureEncoder:
             "ผิวคล้ำ",
         ]
         self.beard_categories = [
-            "หนวดเคราบาง",
-            "หนวดเข้ม",
+            "เคราบาง",
+            "หนวด",
             "เคราแพะ",
             "จอน",
         ]
@@ -56,8 +56,8 @@ class FeatureEncoder:
             "เด็กเล็ก": "วัยเด็กเล็ก",
             "เด็กโต": "วัยเด็กโต",
             "วัยรุ่น": "วัยรุ่น",
-            "วัยผู้ใหญ่ตอนต้น": "วัยผู้ใหญ่ตอนต้น",
-            "วัยผู้ใหญ่ตอนกลาง": "วัยผู้ใหญ่ตอนกลาง",
+            "ผู้ใหญ่ตอนต้น": "วัยผู้ใหญ่ตอนต้น",
+            "ผู้ใหญ่ตอนกลาง": "วัยผู้ใหญ่ตอนกลาง",
             "สูงอายุ": "วัยสูงอายุ",
         }
 
@@ -155,10 +155,25 @@ class FeatureEncoder:
         โดยอิงจาก index ของ self.feature_names
         """
         matched_features = []
-        # วนลูปเช็คว่าตำแหน่งไหนมีค่าเป็น 1 ให้ดึงคำภาษาไทยในตำแหน่งนั้นมา
         for i, val in enumerate(vector):
             if val == 1:
                 matched_features.append(self.feature_names[i])
+
+        hair_style_start_idx = (
+            len(self.age_categories)
+            + len(self.gender_categories)
+            + len(self.hair_color_categories)
+        )
+        hair_style_end_idx = hair_style_start_idx + len(self.hair_style_categories)
+
+        hair_style_vector = vector[hair_style_start_idx:hair_style_end_idx]
+        if sum(hair_style_vector) == 0:
+            matched_features.append("ศีรษะล้าน")
+
+        beard_start_idx = len(self.feature_names) - len(self.beard_categories)
+        beard_vector = vector[beard_start_idx:]
+        if sum(beard_vector) == 0:
+            matched_features.append("ไม่มีหนวดเครา")
 
         return matched_features
 

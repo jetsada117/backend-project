@@ -73,12 +73,18 @@ async def save_item_prediction(
         gender_text = encoder.gender_categories[
             np.argmax(predictions_dict["gender_result"])
         ]
-        haircolor_text = encoder.hair_color_categories[
-            np.argmax(predictions_dict["haircolor_result"])
-        ]
-        hairstyle_text = encoder.hair_style_categories[
-            np.argmax(predictions_dict["hairstyle_result"])
-        ]
+
+        if sum(predictions_dict["hairstyle_result"]) == 0:
+            hairstyle_text = "ศีรษะล้าน"
+            haircolor_text = "ไม่ระบุ"
+        else:
+            hairstyle_text = encoder.hair_style_categories[
+                np.argmax(predictions_dict["hairstyle_result"])
+            ]
+            haircolor_text = encoder.hair_color_categories[
+                np.argmax(predictions_dict["haircolor_result"])
+            ]
+
         skin_text = encoder.skin_categories[np.argmax(predictions_dict["skin_result"])]
 
         # Multi-label
@@ -94,7 +100,7 @@ async def save_item_prediction(
             for i, cat in enumerate(encoder.beard_categories)
             if predictions_dict["beard_result"][i] == 1
         ]
-        beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
+        beard_string = ", ".join(beard_texts) or "ไม่มีหนวดเครา"
     except (KeyError, IndexError) as e:
         raise HTTPException(
             status_code=400, detail=f"ข้อมูล Array ที่ส่งมาไม่ครบหรือไม่ถูกต้อง: {str(e)}"
