@@ -10,6 +10,13 @@ from tensorflow.keras.models import load_model  # type: ignore
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
 
+from tensorflow.keras.applications.convnext import (  # type: ignore
+    preprocess_input as convnext_preprocess,
+)
+from tensorflow.keras.applications.inception_v3 import (  # type: ignore
+    preprocess_input as inception_preprocess,
+)
+
 
 class MultiModelPredictor:
     def __init__(self):
@@ -41,7 +48,7 @@ class MultiModelPredictor:
         self.age_regression_model = get_model(
             "age_convnext_finetuned_regression_model.keras"
         )
-        self.gender_model = get_model("gender_best_model_convnext.keras")
+        self.gender_model = get_model("gender_best_model_efficientnet.keras")
         self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
         self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
         self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
@@ -51,21 +58,22 @@ class MultiModelPredictor:
         self.is_loaded = True
         print("All models loaded successfully!")
 
-    def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
-        """
-        ฟังก์ชันสำหรับเตรียมรูปภาพก่อนเข้าโมเดล
-        """
-        img = Image.open(io.BytesIO(image_bytes))
-        img = img.convert("RGB")
-        img = img.resize((img_size, img_size))
-
+    def preprocess_image(
+        self, image_bytes: bytes, img_size: int, model_type: str = "convnext"
+    ):
+        img = (
+            Image.open(io.BytesIO(image_bytes))
+            .convert("RGB")
+            .resize((img_size, img_size))
+        )
         img_array = np.array(img, dtype=np.float32)
-
-        if rescale:
-            img_array = img_array / 255.0
-
         img_array = np.expand_dims(img_array, axis=0)
-        return img_array
+
+        if model_type == "convnext":
+            return convnext_preprocess(img_array)
+        elif model_type == "inception":
+            return inception_preprocess(img_array)
+        return img_array / 255.0
 
     def _map_age_to_range(self, age: float) -> list:
         """
@@ -102,7 +110,9 @@ class MultiModelPredictor:
         return result
 
     def _predict_gender(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224, rescale=True)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, rescale=False
+        )
         pred_prob = self.gender_model.predict(processed_image)[0][0]
 
         return [0, 1] if pred_prob > 0.5 else [1, 0]
