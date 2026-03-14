@@ -100,7 +100,7 @@ async def save_item_prediction(
             for i, cat in enumerate(encoder.beard_categories)
             if predictions_dict["beard_result"][i] == 1
         ]
-        beard_string = ", ".join(beard_texts) or "ไม่มีหนวดเครา"
+        beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
     except (KeyError, IndexError) as e:
         raise HTTPException(
             status_code=400, detail=f"ข้อมูล Array ที่ส่งมาไม่ครบหรือไม่ถูกต้อง: {str(e)}"

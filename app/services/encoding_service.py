@@ -169,11 +169,6 @@ class FeatureEncoder:
         if sum(hair_style_vector) == 0:
             matched_features.append("ศีรษะล้าน")
 
-        beard_start_idx = len(self.feature_names) - len(self.beard_categories)
-        beard_vector = vector[beard_start_idx:]
-        if sum(beard_vector) == 0:
-            matched_features.append("ไม่มีหนวดเครา")
-
         return matched_features
 
     def to_dataframe(self, vector):
