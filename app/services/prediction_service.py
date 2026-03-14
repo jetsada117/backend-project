@@ -16,6 +16,9 @@ from tensorflow.keras.applications.convnext import (  # type: ignore
 from tensorflow.keras.applications.inception_v3 import (  # type: ignore
     preprocess_input as inception_preprocess,
 )
+from tensorflow.keras.applications.efficientnet import (  # type: ignore
+    preprocess_input as efficientnet_preprocess,
+)
 
 
 class MultiModelPredictor:
@@ -58,7 +61,9 @@ class MultiModelPredictor:
         self.is_loaded = True
         print("All models loaded successfully!")
 
-    def preprocess_image(self, image_bytes: bytes, img_size: int, rescale: bool = True):
+    def preprocess_image(
+        self, image_bytes: bytes, img_size: int, model_type: str = "default"
+    ):
         """
         ฟังก์ชันสำหรับเตรียมรูปภาพก่อนเข้าโมเดล
         """
@@ -67,11 +72,16 @@ class MultiModelPredictor:
         img = img.resize((img_size, img_size))
         img_array = np.array(img, dtype=np.float32)
 
-        if rescale:
-
-            img_array = img_array / 255.0
-
         img_array = np.expand_dims(img_array, axis=0)
+
+        if model_type == "convnext":
+            img_array = convnext_preprocess(img_array)
+        elif model_type == "inception":
+            img_array = inception_preprocess(img_array)
+        elif model_type == "efficientnet":
+            img_array = efficientnet_preprocess(img_array)
+        elif model_type == "default":
+            img_array = img_array / 255.0
 
         return img_array
 
@@ -94,14 +104,18 @@ class MultiModelPredictor:
             return [0, 0, 0, 0, 0, 1]
 
     def _predict_age_regression(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, model_type="convnext"
+        )
 
         pred_age = self.age_regression_model.predict(processed_image)[0][0]
 
         return self._map_age_to_range(pred_age)
 
     def _predict_age(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, model_type="convnext"
+        )
         pred_probs = self.age_model.predict(processed_image)[0]
 
         predicted_index = np.argmax(pred_probs)
@@ -111,14 +125,16 @@ class MultiModelPredictor:
 
     def _predict_gender(self, image_bytes: bytes):
         processed_image = self.preprocess_image(
-            image_bytes, img_size=224, rescale=False
+            image_bytes, img_size=224, model_type="convnext"
         )
         pred_prob = self.gender_model.predict(processed_image)[0][0]
 
         return [0, 1] if pred_prob > 0.5 else [1, 0]
 
     def _predict_haircolor(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224, rescale=True)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, model_type="convnext"
+        )
         pred_probs = self.haircolor_model.predict(processed_image)[0]
 
         predicted_index = np.argmax(pred_probs)
@@ -127,7 +143,9 @@ class MultiModelPredictor:
         return result
 
     def _predict_hairstyle(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=299)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=299, model_type="inception"
+        )
         pred_probs = self.hairstyle_model.predict(processed_image)[0]
 
         predicted_index = np.argmax(pred_probs)
@@ -140,13 +158,17 @@ class MultiModelPredictor:
             return [0, 1]
 
     def _predict_eyebrows(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, model_type="convnext"
+        )
         pred_probs = self.eyebrows_model.predict(processed_image)[0]
 
         return [1 if prob > 0.5 else 0 for prob in pred_probs]
 
     def _predict_skin(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=299)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=299, model_type="inception"
+        )
         pred_probs = self.skin_model.predict(processed_image)[0]
 
         predicted_index = np.argmax(pred_probs)
@@ -155,7 +177,9 @@ class MultiModelPredictor:
         return result
 
     def _predict_beard(self, image_bytes: bytes):
-        processed_image = self.preprocess_image(image_bytes, img_size=224)
+        processed_image = self.preprocess_image(
+            image_bytes, img_size=224, model_type="convnext"
+        )
         pred_probs = self.beard_model.predict(processed_image)[0]
 
         # คืนค่าเป็น List ของ 0 และ 1 (เช่น [1, 0, 1, 0])
