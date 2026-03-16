@@ -10,11 +10,11 @@ class FaceSimilarityScorer:
         self.weight_config = weight_config or {
             "age": 0.15,  # ช่วงวัย
             "gender": 0.40,  # เพศ
-            "hair_color": 0.5,  # สีผม
-            "hair_style": 0.5,  # ลักษณะผม
+            "hair_color": 0.05,  # สีผม
+            "hair_style": 0.05,  # ลักษณะผม
             "eyebrow": 0.10,  # คิ้ว
             "skin": 0.20,  # สีผิว
-            "beard": 0.5,  # หนวดเครา
+            "beard": 0.05,  # หนวดเครา
         }
 
         # 2. กำหนดขนาดของคลาส (One-Hot length) ของแต่ละ Feature
