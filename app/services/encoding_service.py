@@ -94,7 +94,7 @@ class FeatureEncoder:
 
         for category in self.eyebrow_categories:
             if category in text:
-                extracted_features["eyebrow"] = category
+                extracted_features["eyebrow"].append(category)
 
         for category in sorted(self.skin_categories, key=len, reverse=True):
             if category in text:
