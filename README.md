@@ -40,8 +40,4 @@ pinned: false
 ## 🛡️ Role-Based Access
 * **Admin:** สามารถจัดการข้อมูลและดูสถิติทั้งหมดได้.
 * **User:** สามารถใช้งานการทำนายและค้นหาใบหน้าที่คล้ายกันได้.
-
-## 📡 API Usage
-การใช้งานหลักคือการส่งคำบรรยายลักษณะใบหน้าผ่าน Query String เพื่อค้นหาบุคคลที่คล้ายกันในระบบ:
-
-`POST /api/v1/predictions/calculate?description=ผู้ชายผมสั้น&ranking_limit=5`
+* 
