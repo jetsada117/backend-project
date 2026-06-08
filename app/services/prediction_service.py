@@ -138,6 +138,9 @@ class MultiModelPredictor:
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
+        if img_raw is None:
+            raise ValueError("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาตรวจสอบไฟล์ที่อัปโหลด")
+        
         # 1. ทำ Face Alignment & Crop (เพื่อให้โมเดลเห็นหน้าตรงและชัดเจนที่สุด)
         img_processed = self._align_and_crop_face(img_raw)
         
@@ -161,6 +164,7 @@ class MultiModelPredictor:
         }
 
     def _map_age_to_range(self, age: float) -> list:
+        # ... (rest of the method)
         """
         แปลงอายุที่เป็นตัวเลข (float) เป็น One-hot encoding ตามช่วงวัยที่ต้องการ
         ตัวอย่าง: [0-18, 19-35, 36-50, 50+]
