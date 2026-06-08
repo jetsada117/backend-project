@@ -1,11 +1,16 @@
+import traceback
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.responses import PlainTextResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse, JSONResponse
 from scalar_fastapi import get_scalar_api_reference
 from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 
+# ตั้งค่า Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,6 +21,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="fastapi", lifespan=lifespan)
+
+# Middleware สำหรับดักจับ Error และแสดง Log
+@app.middleware("http")
+async def catch_exceptions_middleware(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        err_msg = traceback.format_exc()
+        logger.error(f"Global Error Catch: \n{err_msg}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal Server Error", "traceback": err_msg if True else None} # ปรับเป็น False ใน production
+        )
 
 app.include_router(api_router, prefix="/api/v1")
 

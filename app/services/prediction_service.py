@@ -126,6 +126,29 @@ class MultiModelPredictor:
         self.skin_model = get_model("skin_best_model_inception.keras")
         self.beard_model = get_model("beard_best_model_convnext.keras")
 
+        # --- ส่วนของ Model Warm-up ---
+        # สั่งรันการทำนายหลอกๆ (Dummy Inference) เพื่อให้ TensorFlow เตรียม Compute Graph 
+        # และจองหน่วยความจำไว้ล่วงหน้า ช่วยลดเวลา Cold Start สำหรับ User คนแรก
+        print("🔥 Warming up models with dummy data...")
+        try:
+            dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
+            dummy_input_299 = np.zeros((1, 299, 299, 3), dtype=np.float32)
+            
+            # รันการทำนายหลอกๆ ให้ครบทุกโมเดล
+            self.age_model.predict(dummy_input_224, verbose=0)
+            self.age_regression_model.predict(dummy_input_224, verbose=0)
+            self.gender_model.predict(dummy_input_224, verbose=0)
+            self.haircolor_model.predict(dummy_input_224, verbose=0)
+            self.hairstyle_model.predict(dummy_input_299, verbose=0)
+            self.eyebrows_model.predict(dummy_input_224, verbose=0)
+            self.skin_model.predict(dummy_input_299, verbose=0)
+            self.beard_model.predict(dummy_input_224, verbose=0)
+            
+            print("✅ Warm-up complete! System is ready for fast response.")
+        except Exception as e:
+            print(f"⚠️ Warm-up failed: {e}")
+        # -----------------------------
+
         self.is_loaded = True
         print("All models loaded successfully!")
 

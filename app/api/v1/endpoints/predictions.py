@@ -36,6 +36,8 @@ async def predict_item_image(
     try:
         predictions = await predictor_service.predict_all(contents)
     except Exception as e:
+        import traceback
+        print(traceback.format_exc()) # แสดง log ใน terminal ของ server
         raise HTTPException(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการทำนายผล: {str(e)}"
         )
