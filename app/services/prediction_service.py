@@ -78,10 +78,16 @@ class MultiModelPredictor:
             dX = eye_right[0] - eye_left[0]
             angle = np.degrees(np.arctan2(dY, dX))
             
-            # หมุนภาพ
-            eye_center = ((eye_left[0] + eye_right[0]) // 2, (eye_left[1] + eye_right[1]) // 2)
-            M = cv2.getRotationMatrix2D(eye_center, angle, 1.0)
-            image_np = cv2.warpAffine(image_np, M, (image_np.shape[1], image_np.shape[0]), flags=cv2.INTER_CUBIC)
+            # 2. หมุนภาพ (Alignment)
+            eye_center = (
+                float((right_eye[0] + left_eye[0]) / 2),
+                float((right_eye[1] + left_eye[1]) / 2),
+            )
+            M = cv2.getRotationMatrix2D(eye_center, float(angle), 1.0)
+            image_np = cv2.warpAffine(
+                image_np, M, (image_np.shape[1], image_np.shape[0]), flags=cv2.INTER_CUBIC
+            )
+
             
             # ตรวจหาใบหน้าอีกครั้งหลังหมุนเพื่อให้ Crop ได้แม่นยำ
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
