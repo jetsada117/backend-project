@@ -31,6 +31,7 @@ class PredictionCreate(PredictionBase):
     eyebrows_result: str
     skin_result: str
     beard_result: str
+    prediction_vector: List[int]
 
 
 class Prediction(PredictionBase):
@@ -44,3 +45,4 @@ class Prediction(PredictionBase):
     eyebrows_result: str
     skin_result: str
     beard_result: str
+    prediction_vector: Optional[List[int]] = None

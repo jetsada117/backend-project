@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, JSON
 from .base_class import Base
 
 
@@ -16,5 +16,7 @@ class Prediction(Base):
     eyebrows_result = Column(String(50), nullable=False)
     skin_result = Column(String(50), nullable=False)
     beard_result = Column(String(50), nullable=False)
+
+    prediction_vector = Column(JSON, nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"))

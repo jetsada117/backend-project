@@ -123,7 +123,20 @@ async def save_item_prediction(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: {str(e)}"
         )
 
-    # --- ส่วนที่ 2: ส่งค่า String เข้า Schema ---
+    # --- ส่วนที่ 2: คำนวณ Vector 25 มิติ ---
+    full_vector = (
+        predictions_dict.get("age_result", [])
+        + predictions_dict.get("gender_result", [])
+        + predictions_dict.get("haircolor_result", [])
+        + predictions_dict.get("hairstyle_result", [])
+        + predictions_dict.get("eyebrows_result", [])
+        + predictions_dict.get("skin_result", [])
+        + predictions_dict.get("beard_result", [])
+    )
+    # แปลง numpy int64 เป็น standard int เพื่อให้ json.dumps ทำงานได้
+    full_vector_list = [int(x) for x in full_vector]
+
+    # --- ส่วนที่ 3: ส่งค่าเข้า Schema ---
     prediction_data = prediction_schema.PredictionCreate(
         image_filename=new_file_name,
         image_url=image_url,
@@ -134,6 +147,7 @@ async def save_item_prediction(
         eyebrows_result=eyebrow_string,
         skin_result=skin_text,
         beard_result=beard_string,
+        prediction_vector=full_vector_list,
     )
 
     saved_prediction = await prediction_crud.create_prediction(

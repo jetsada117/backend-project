@@ -15,12 +15,12 @@ async def create_prediction(
         INSERT INTO predictions (
             image_filename, image_url, age_result, gender_result, 
             haircolor_result, hairstyle_result, eyebrows_result, 
-            skin_result, beard_result, user_id
+            skin_result, beard_result, prediction_vector, user_id
         ) 
         VALUES (
             :image_filename, :image_url, :age_result, :gender_result, 
             :haircolor_result, :hairstyle_result, :eyebrows_result, 
-            :skin_result, :beard_result, :user_id
+            :skin_result, :beard_result, :prediction_vector, :user_id
         )
     """
     )
@@ -37,6 +37,7 @@ async def create_prediction(
         "eyebrows_result": data_dict["eyebrows_result"],
         "skin_result": data_dict["skin_result"],
         "beard_result": data_dict["beard_result"],
+        "prediction_vector": json.dumps(data_dict["prediction_vector"]),
         "user_id": user_id,
     }
 
@@ -62,6 +63,7 @@ async def get_prediction(db: AsyncSession) -> List[Prediction]:
             eyebrows_result, 
             skin_result, 
             beard_result,
+            prediction_vector,
             user_id
         FROM predictions
     """
@@ -69,6 +71,17 @@ async def get_prediction(db: AsyncSession) -> List[Prediction]:
     result = await db.execute(query)
     rows = result.mappings().all()
 
-    predictions_list = [Prediction(**dict(row)) for row in rows]
+    predictions_list = []
+    for row in rows:
+        row_dict = dict(row)
+        # หากใช้ MySQL JSON column ร่วมกับ raw SQL บางทีผลลัพธ์อาจกลับมาเป็น string หรือ dict ขึ้นอยู่กับ driver
+        # ตรวจสอบและแปลงให้เป็น list/dict ก่อนเข้า Pydantic
+        if isinstance(row_dict.get("prediction_vector"), str):
+            try:
+                row_dict["prediction_vector"] = json.loads(row_dict["prediction_vector"])
+            except json.JSONDecodeError:
+                row_dict["prediction_vector"] = None
+        
+        predictions_list.append(Prediction(**row_dict))
 
     return predictions_list

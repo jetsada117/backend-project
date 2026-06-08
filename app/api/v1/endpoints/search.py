@@ -22,7 +22,29 @@ async def calculate_similarity(
 
     results = []
     for item in db_predictions:
-        db_text_features = (
+        # --- ใช้ Vector ที่บันทึกไว้ใน DB หากมี (Optimization) ---
+        if item.prediction_vector:
+            db_vector = item.prediction_vector
+        else:
+            # Fallback สำหรับข้อมูลเก่าที่ยังไม่มี vector ใน DB
+            db_text_features = (
+                f"{item.age_result or ''} "
+                f"{item.gender_result or ''} "
+                f"{item.haircolor_result or ''} "
+                f"{item.hairstyle_result or ''} "
+                f"{item.eyebrows_result or ''} "
+                f"{item.skin_result or ''} "
+                f"{item.beard_result or ''}"
+            ).strip()
+            db_vector = encoder.text_to_vector(db_text_features)
+
+        if len(db_vector) != len(scorer.expanded_weights):
+            continue
+
+        score = scorer.calculate_similarity(current_user_vector, db_vector)
+
+        # เตรียมข้อมูล features สำหรับแสดงผล (อิงจากผลลัพธ์ที่เป็นข้อความ)
+        db_text_features_for_display = (
             f"{item.age_result or ''} "
             f"{item.gender_result or ''} "
             f"{item.haircolor_result or ''} "
@@ -32,16 +54,9 @@ async def calculate_similarity(
             f"{item.beard_result or ''}"
         ).strip()
 
-        db_vector = encoder.text_to_vector(db_text_features)
-
-        if len(db_vector) != len(scorer.expanded_weights):
-            continue
-
-        score = scorer.calculate_similarity(current_user_vector, db_vector)
-
         thai_features_list = [
             feature.strip()
-            for feature in db_text_features.replace(",", " ").split()
+            for feature in db_text_features_for_display.replace(",", " ").split()
             if feature.strip()
         ]
 

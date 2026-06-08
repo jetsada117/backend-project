@@ -17,6 +17,27 @@ pinned: false
 * **Security:** Argon2id & JWT Authentication.
 * **ML Models:** ConvNeXt & InceptionV3.
 
+## 💻 การพัฒนาและคำสั่งที่สำคัญ (Development Commands)
+
+ในการพัฒนาโปรเจกต์นี้ เราใช้ `uv` สำหรับจัดการ Python environment และ dependencies:
+
+### 1. การจัดการ Environment & Dependencies
+* `uv sync`: ติดตั้ง dependencies ทั้งหมดที่ระบุในไฟล์ `pyproject.toml`.
+* `uv add <package>`: เพิ่ม package ใหม่เข้าไปในโปรเจกต์.
+
+### 2. การรันเซิร์ฟเวอร์ (Running Server)
+* `uv run uvicorn app.main:app --reload`: รันเซิร์ฟเวอร์สำหรับพัฒนา (Development Server) โดยจะรีสตาร์ทอัตโนมัติเมื่อมีการแก้ไขโค้ด.
+* `--host 0.0.0.0 --port 8000`: (ตัวเลือกเสริม) กำหนด host และ port.
+
+### 3. การจัดการฐานข้อมูล (Database Migrations)
+เราใช้ **Alembic** ในการควบคุมเวอร์ชันของฐานข้อมูล:
+* `alembic upgrade head`: อัปเดตโครงสร้างฐานข้อมูล (Schema) ให้เป็นเวอร์ชันล่าสุด.
+* `alembic revision --autogenerate -m "comment"`: สร้างไฟล์ migration ใหม่โดยอัตโนมัติจากการตรวจสอบความเปลี่ยนแปลงใน `models`.
+* `alembic downgrade -1`: ย้อนกลับโครงสร้างฐานข้อมูลไป 1 เวอร์ชัน.
+
+### 4. การทดสอบ (Testing)
+* `pytest`: รันการทดสอบทั้งหมดในโฟลเดอร์ `tests/`.
+
 ## 🌐 System URLs
 * **Live API (Production):** `https://jetsada117-backend-project.hf.space/`
 * **Interactive Documentation (Scalar):** `https://jetsada117-backend-project.hf.space/scalar`
