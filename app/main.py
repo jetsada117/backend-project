@@ -7,6 +7,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 from scalar_fastapi import get_scalar_api_reference
 from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
+from app.core.config import settings
 
 # ตั้งค่า Logging
 logging.basicConfig(level=logging.INFO)
@@ -28,11 +29,13 @@ async def catch_exceptions_middleware(request: Request, call_next):
     try:
         return await call_next(request)
     except Exception as exc:
-        err_msg = traceback.format_exc()
-        logger.error(f"Global Error Catch: \n{err_msg}")
+        logger.error(f"Global Error Catch: {str(exc)}", exc_info=True)
         return JSONResponse(
             status_code=500,
-            content={"detail": "Internal Server Error", "traceback": err_msg if True else None} # ปรับเป็น False ใน production
+            content={
+                "detail": "Internal Server Error",
+                "traceback": traceback.format_exc() if settings.DEBUG else None
+            }
         )
 
 app.include_router(api_router, prefix="/api/v1")

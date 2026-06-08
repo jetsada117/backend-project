@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     PROJECT_NAME: str
+    DEBUG: bool = False
 
     DATABASE_URL: str
 

@@ -34,6 +34,9 @@ class MultiModelPredictor:
         self.beard_model = None
         self.is_loaded = False
         
+        # สร้าง ThreadPoolExecutor เพียงครั้งเดียวเพื่อใช้ซ้ำ (Singleton Pattern)
+        self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
+
         # Initialize OpenCV Face and Eye detectors
         self.face_cascade = cv2.CascadeClassifier(
             os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
@@ -106,7 +109,6 @@ class MultiModelPredictor:
         return image_np[y1:y2, x1:x2]
 
     def load_models(self):
-        # ... (rest of load_models remains the same)
         """ฟังก์ชันสำหรับโหลดโมเดลเก็บไว้ใน Class (ทำหน้าที่เป็น In-memory Cache)"""
         if self.is_loaded:
             return
@@ -132,14 +134,11 @@ class MultiModelPredictor:
         self.beard_model = get_model("beard_best_model_convnext.keras")
 
         # --- ส่วนของ Model Warm-up ---
-        # สั่งรันการทำนายหลอกๆ (Dummy Inference) เพื่อให้ TensorFlow เตรียม Compute Graph 
-        # และจองหน่วยความจำไว้ล่วงหน้า ช่วยลดเวลา Cold Start สำหรับ User คนแรก
         print("🔥 Warming up models with dummy data...")
         try:
             dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
             dummy_input_299 = np.zeros((1, 299, 299, 3), dtype=np.float32)
             
-            # รันการทำนายหลอกๆ ให้ครบทุกโมเดล
             self.age_model.predict(dummy_input_224, verbose=0)
             self.age_regression_model.predict(dummy_input_224, verbose=0)
             self.gender_model.predict(dummy_input_224, verbose=0)
@@ -152,7 +151,6 @@ class MultiModelPredictor:
             print("✅ Warm-up complete! System is ready for fast response.")
         except Exception as e:
             print(f"⚠️ Warm-up failed: {e}")
-        # -----------------------------
 
         self.is_loaded = True
         print("All models loaded successfully!")
@@ -162,25 +160,20 @@ class MultiModelPredictor:
         1. ทำ Face Alignment และ Crop เฉพาะใบหน้า
         2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ
         """
-        # แปลง bytes เป็น numpy (OpenCV format)
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
         if img_raw is None:
             raise ValueError("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาตรวจสอบไฟล์ที่อัปโหลด")
         
-        # 1. ทำ Face Alignment & Crop (เพื่อให้โมเดลเห็นหน้าตรงและชัดเจนที่สุด)
         img_processed = self._align_and_crop_face(img_raw)
         
-        # แปลงกลับเป็น RGB สำหรับ PIL/TensorFlow
         img_rgb = cv2.cvtColor(img_processed, cv2.COLOR_BGR2RGB)
         img_pil = Image.fromarray(img_rgb)
         
-        # 2. เตรียมรูปขนาด 224 (สำหรับ ConvNeXt, EfficientNet)
         img_224 = np.array(img_pil.resize((224, 224)), dtype=np.float32)
         img_224 = np.expand_dims(img_224, axis=0)
         
-        # เตรียมรูปขนาด 299 (สำหรับ Inception)
         img_299 = np.array(img_pil.resize((299, 299)), dtype=np.float32)
         img_299 = np.expand_dims(img_299, axis=0)
 
@@ -192,11 +185,6 @@ class MultiModelPredictor:
         }
 
     def _map_age_to_range(self, age: float) -> list:
-        # ... (rest of the method)
-        """
-        แปลงอายุที่เป็นตัวเลข (float) เป็น One-hot encoding ตามช่วงวัยที่ต้องการ
-        ตัวอย่าง: [0-18, 19-35, 36-50, 50+]
-        """
         if age <= 6:
             return [1, 0, 0, 0, 0, 0]
         elif age <= 12:
@@ -257,55 +245,53 @@ class MultiModelPredictor:
         pred_probs = self.beard_model.predict(processed_image, verbose=0)[0]
         return [1 if prob > 0.5 else 0 for prob in pred_probs]
 
-    async def predict_all(self, image_bytes: bytes) -> list:
+    async def predict_all(self, image_bytes: bytes) -> dict:
         """รันโมเดลทั้งหมดพร้อมกันโดยใช้รูปที่ผ่านการ Preprocess ล่วงหน้าเพียงครั้งเดียว"""
         loop = asyncio.get_running_loop()
         
         # ทำ Preprocess เพียงครั้งเดียว (CPU intensive)
-        preprocessed = await loop.run_in_executor(None, self.get_preprocessed_images, image_bytes)
+        preprocessed = await loop.run_in_executor(self.executor, self.get_preprocessed_images, image_bytes)
 
-        with ThreadPoolExecutor() as pool:
+        async def get_hair_features():
+            hairstyle_res = await loop.run_in_executor(
+                self.executor, self._predict_hairstyle, preprocessed["inception"]
+            )
 
-            async def get_hair_features():
-                hairstyle_res = await loop.run_in_executor(
-                    pool, self._predict_hairstyle, preprocessed["inception"]
+            if hairstyle_res == [0, 0]:
+                num_haircolor_classes = self.haircolor_model.output_shape[-1]
+                haircolor_res = [0] * num_haircolor_classes
+            else:
+                haircolor_res = await loop.run_in_executor(
+                    self.executor, self._predict_haircolor, preprocessed["convnext"]
                 )
 
-                if hairstyle_res == [0, 0]:
-                    num_haircolor_classes = self.haircolor_model.output_shape[-1]
-                    haircolor_res = [0] * num_haircolor_classes
-                else:
-                    haircolor_res = await loop.run_in_executor(
-                        pool, self._predict_haircolor, preprocessed["convnext"]
-                    )
+            return haircolor_res, hairstyle_res
 
-                return haircolor_res, hairstyle_res
+        task_age = loop.run_in_executor(
+            self.executor, self._predict_age_regression, preprocessed["convnext"]
+        )
+        task_gender = loop.run_in_executor(self.executor, self._predict_gender, preprocessed["efficientnet"])
+        task_hair = get_hair_features()
+        task_eyebrows = loop.run_in_executor(
+            self.executor, self._predict_eyebrows, preprocessed["convnext"]
+        )
+        task_skin = loop.run_in_executor(self.executor, self._predict_skin, preprocessed["inception"])
+        task_beard = loop.run_in_executor(self.executor, self._predict_beard, preprocessed["convnext"])
 
-            task_age = loop.run_in_executor(
-                pool, self._predict_age_regression, preprocessed["convnext"]
+        res_age, res_gender, res_hair, res_eyebrows, res_skin, res_beard = (
+            await asyncio.gather(
+                task_age,
+                task_gender,
+                task_hair,
+                task_eyebrows,
+                task_skin,
+                task_beard,
             )
-            task_gender = loop.run_in_executor(pool, self._predict_gender, preprocessed["efficientnet"])
-            task_hair = get_hair_features()
-            task_eyebrows = loop.run_in_executor(
-                pool, self._predict_eyebrows, preprocessed["convnext"]
-            )
-            task_skin = loop.run_in_executor(pool, self._predict_skin, preprocessed["inception"])
-            task_beard = loop.run_in_executor(pool, self._predict_beard, preprocessed["convnext"])
-
-            res_age, res_gender, res_hair, res_eyebrows, res_skin, res_beard = (
-                await asyncio.gather(
-                    task_age,
-                    task_gender,
-                    task_hair,
-                    task_eyebrows,
-                    task_skin,
-                    task_beard,
-                )
-            )
+        )
 
         haircolor_res, hairstyle_res = res_hair
 
-        predictions_dict = {
+        return {
             "age_result": res_age,
             "gender_result": res_gender,
             "haircolor_result": haircolor_res,
@@ -314,8 +300,6 @@ class MultiModelPredictor:
             "skin_result": res_skin,
             "beard_result": res_beard,
         }
-
-        return predictions_dict
 
 
 predictor_service = MultiModelPredictor()
