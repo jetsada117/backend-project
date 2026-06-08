@@ -80,15 +80,14 @@ class MultiModelPredictor:
             
             # 2. หมุนภาพ (Alignment)
             eye_center = (
-                float((right_eye[0] + left_eye[0]) / 2),
-                float((right_eye[1] + left_eye[1]) / 2),
+                float((eye_right[0] + eye_left[0]) / 2),
+                float((eye_right[1] + eye_left[1]) / 2),
             )
             M = cv2.getRotationMatrix2D(eye_center, float(angle), 1.0)
             image_np = cv2.warpAffine(
                 image_np, M, (image_np.shape[1], image_np.shape[0]), flags=cv2.INTER_CUBIC
             )
 
-            
             # ตรวจหาใบหน้าอีกครั้งหลังหมุนเพื่อให้ Crop ได้แม่นยำ
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
             faces_rot = self.face_cascade.detectMultiScale(gray_rot, 1.3, 5)
