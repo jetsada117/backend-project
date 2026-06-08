@@ -83,6 +83,24 @@ class MultiModelPredictor:
             "default": img_224 / 255.0
         }
 
+    def _map_age_to_range(self, age: float) -> list:
+        """
+        แปลงอายุที่เป็นตัวเลข (float) เป็น One-hot encoding ตามช่วงวัยที่ต้องการ
+        ตัวอย่าง: [0-18, 19-35, 36-50, 50+]
+        """
+        if age <= 6:
+            return [1, 0, 0, 0, 0, 0]
+        elif age <= 12:
+            return [0, 1, 0, 0, 0, 0]
+        elif age <= 25:
+            return [0, 0, 1, 0, 0, 0]
+        elif age <= 40:
+            return [0, 0, 0, 1, 0, 0]
+        elif age <= 65:
+            return [0, 0, 0, 0, 1, 0]
+        else:
+            return [0, 0, 0, 0, 0, 1]
+
     def _predict_age_regression(self, processed_image):
         pred_age = self.age_regression_model.predict(processed_image, verbose=0)[0][0]
         return self._map_age_to_range(pred_age)

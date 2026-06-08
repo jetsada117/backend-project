@@ -38,6 +38,19 @@ pinned: false
 ### 4. การทดสอบ (Testing)
 * `pytest`: รันการทดสอบทั้งหมดในโฟลเดอร์ `tests/`.
 
+## 📁 โครงสร้างโปรเจกต์ (Project Structure)
+* `app/api/`: จัดการ Endpoints และ API Logic ทั้งหมด แบ่งเป็นเวอร์ชัน (v1).
+* `app/crud/`: ตรรกะการจัดการฐานข้อมูล (Create, Read, Update, Delete) โดยใช้ Raw SQL ร่วมกับ SQLAlchemy.
+* `app/models/`: การนิยาม Schema ของตารางฐานข้อมูลด้วย SQLAlchemy Models.
+* `app/schemas/`: การนิยาม Data Model สำหรับการรับ-ส่งข้อมูล (Validation) ด้วย Pydantic.
+* `app/services/`: ส่วนการประมวลผลหลักของระบบ:
+    * `prediction_service.py`: การทำ ML Inference ด้วย TensorFlow.
+    * `storage_service.py`: การจัดการไฟล์บน Cloudflare R2 (S3 Compatible).
+    * `encoding_service.py`: การแปลงข้อความเป็น Vector และในทางกลับกัน.
+    * `cosine_similarity_service.py`: การคำนวณความคล้ายคลึงของใบหน้า.
+* `alembic/`: เก็บไฟล์เวอร์ชันของฐานข้อมูล (Database Migration Scripts).
+* `tests/`: ไฟล์สำหรับทดสอบระบบ (Unit & Integration Tests).
+
 ## 🌐 System URLs
 * **Live API (Production):** `https://jetsada117-backend-project.hf.space/`
 * **Interactive Documentation (Scalar):** `https://jetsada117-backend-project.hf.space/scalar`
