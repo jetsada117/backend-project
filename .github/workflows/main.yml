@@ -1,0 +1,58 @@
+name: CI/CD Pipeline
+
+# ส่วนที่ 1: กำหนดเหตุการณ์ (Event) ที่จะให้ Workflow เริ่มทำงาน
+on:
+  push:
+    branches: [ main, master ] # รันเมื่อมีการ push เข้ากิ่งหลัก
+  pull_request:
+    branches: [ main, master ] # รันเมื่อมีการสร้าง Pull Request
+
+jobs:
+  # ส่วนที่ 2: Continuous Integration (CI) - การทดสอบและตรวจสอบคุณภาพโค้ด
+  test:
+    runs-on: ubuntu-latest # ใช้เครื่อง Server Linux ของ GitHub
+    
+    # กำหนดค่า Environment Variables สำหรับตอนรัน Test
+    env:
+      DATABASE_URL: sqlite+aiosqlite:///:memory:
+      SECRET_KEY: ${{ secrets.SECRET_KEY || 'test_secret_key_for_ci' }}
+      ALGORITHM: HS256
+      R2_BUCKET_NAME: test-bucket
+      R2_ACCOUNT_ID: test-id
+      R2_ACCESS_KEY: test-key
+      R2_SECRET_KEY: test-secret
+      HF: test-hf-token
+      REDIS_URL: redis://localhost:6379/0
+      GMAIL: test@gmail.com
+      BREVO_API_KEY: test-brevo-key
+      PROJECT_NAME: FaceSearchTest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # ดึงโค้ดจาก Repository มาที่เครื่องนี้
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh # ติดตั้งเครื่องมือ uv
+
+      - name: Set up Python
+        run: uv python install 3.11 # ติดตั้ง Python 3.11
+
+      - name: Install dependencies
+        run: uv sync --frozen # ติดตั้ง Library ตาม lock file
+
+      - name: Run Pytest
+        # รัน Test ทั้งหมดในโฟลเดอร์ tests
+        # ถ้าขั้นตอนตรงนี้ Error (พัง) Workflow จะหยุดและส่งอีเมลแจ้งเตือนคุณทันที
+        run: uv run pytest tests
+
+  # ส่วนที่ 3: Continuous Deployment (CD) - การนำไปใช้งาน (ตัวอย่าง)
+  deploy:
+    needs: test # ต้องรอให้ Job "test" ผ่านก่อนเท่านั้นถึงจะทำตรงนี้
+    if: github.event_name == 'push' # ให้ Deploy เฉพาะตอน Push (ไม่ทำตอน PR)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Status
+        run: |
+          echo "🎉 All tests passed successfully!"
+          echo "🚀 Deployment process would start here."
+          echo "Branch: ${{ github.ref }}"
