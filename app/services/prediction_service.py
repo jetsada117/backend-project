@@ -5,7 +5,6 @@ import asyncio
 from PIL import Image
 import numpy as np
 import cv2
-import mediapipe as mp
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from tensorflow.keras.models import load_model  # type: ignore
@@ -35,62 +34,71 @@ class MultiModelPredictor:
         self.beard_model = None
         self.is_loaded = False
         
-        # Initialize MediaPipe for face detection
-        self.mp_face_detection = mp.solutions.face_detection
-        self.face_detector = self.mp_face_detection.FaceDetection(
-            model_selection=1, min_detection_confidence=0.5
+        # Initialize OpenCV Face and Eye detectors
+        self.face_cascade = cv2.CascadeClassifier(
+            os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
+        )
+        self.eye_cascade = cv2.CascadeClassifier(
+            os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
         )
 
     def _align_and_crop_face(self, image_np):
         """
-        ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า
+        ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า โดยใช้ OpenCV Haar Cascades
         """
-        h, w, _ = image_np.shape
-        results = self.face_detector.process(cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB))
+        gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
         
-        if not results.detections:
-            return image_np  # หากไม่เจอใบหน้า ให้ใช้ภาพเดิม
+        if len(faces) == 0:
+            return image_np
 
-        detection = results.detections[0]
-        keypoints = detection.location_data.relative_keypoints
+        # เลือกใบหน้าที่ใหญ่ที่สุด
+        (x, y, w, h) = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+        roi_gray = gray[y:y+h, x:x+w]
+        roi_color = image_np[y:y+h, x:x+w]
+
+        # ตรวจหาดวงตาภายในใบหน้าเพื่อทำ Alignment
+        eyes = self.eye_cascade.detectMultiScale(roi_gray)
         
-        # จุด Landmark ตาซ้ายและตาขวา (ในมุมมองของรูป)
-        # MediaPipe: 0=Right Eye (มุมมองเราคือซ้าย), 1=Left Eye (มุมมองเราคือขวา)
-        right_eye = (int(keypoints[0].x * w), int(keypoints[0].y * h))
-        left_eye = (int(keypoints[1].x * w), int(keypoints[1].y * h))
+        if len(eyes) >= 2:
+            # เลือกดวงตา 2 ดวงที่อยู่ด้านบนที่สุด
+            eyes = sorted(eyes, key=lambda e: e[1])[:2]
+            # เรียงจากซ้ายไปขวา
+            eyes = sorted(eyes, key=lambda e: e[0])
+            
+            (ex1, ey1, ew1, eh1) = eyes[0]
+            (ex2, ey2, ew2, eh2) = eyes[1]
+            
+            # จุดศูนย์กลางดวงตา
+            eye_left = (x + ex1 + ew1//2, y + ey1 + eh1//2)
+            eye_right = (x + ex2 + ew2//2, y + ey2 + eh2//2)
+            
+            # คำนวณมุมเอียง
+            dY = eye_right[1] - eye_left[1]
+            dX = eye_right[0] - eye_left[0]
+            angle = np.degrees(np.arctan2(dY, dX))
+            
+            # หมุนภาพ
+            eye_center = ((eye_left[0] + eye_right[0]) // 2, (eye_left[1] + eye_right[1]) // 2)
+            M = cv2.getRotationMatrix2D(eye_center, angle, 1.0)
+            image_np = cv2.warpAffine(image_np, M, (image_np.shape[1], image_np.shape[0]), flags=cv2.INTER_CUBIC)
+            
+            # ตรวจหาใบหน้าอีกครั้งหลังหมุนเพื่อให้ Crop ได้แม่นยำ
+            gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
+            faces_rot = self.face_cascade.detectMultiScale(gray_rot, 1.3, 5)
+            if len(faces_rot) > 0:
+                (x, y, w, h) = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[0]
 
-        # 1. คำนวณมุมเอียงระหว่างดวงตา
-        dY = left_eye[1] - right_eye[1]
-        dX = left_eye[0] - right_eye[0]
-        angle = np.degrees(np.arctan2(dY, dX))
-
-        # 2. หมุนภาพ (Alignment)
-        eye_center = ((right_eye[0] + left_eye[0]) // 2, (right_eye[1] + left_eye[1]) // 2)
-        M = cv2.getRotationMatrix2D(eye_center, angle, 1.0)
-        rotated = cv2.warpAffine(image_np, M, (w, h), flags=cv2.INTER_CUBIC)
-
-        # 3. ตรวจหาใบหน้าอีกครั้งบนภาพที่หมุนแล้วเพื่อทำ Crop ที่แม่นยำ
-        results_rotated = self.face_detector.process(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
-        if not results_rotated.detections:
-            return rotated
-
-        # ใช้ Bounding Box ของ MediaPipe ในการ Crop (ขยายขนาดเผื่อผมและคาง)
-        bbox = results_rotated.detections[0].location_data.relative_bounding_box
-        x = int(bbox.xmin * w)
-        y = int(bbox.ymin * h)
-        box_w = int(bbox.width * w)
-        box_h = int(bbox.height * h)
-
-        # เพิ่ม Padding 30% รอบๆ
-        pad_w = int(box_w * 0.3)
-        pad_h = int(box_h * 0.3)
+        # Crop ใบหน้า (เพิ่ม Padding 20%)
+        pad_w = int(w * 0.2)
+        pad_h = int(h * 0.2)
         
-        x1 = max(0, x - pad_w)
         y1 = max(0, y - pad_h)
-        x2 = min(w, x + box_w + pad_w)
-        y2 = min(h, y + box_h + pad_h)
-
-        return rotated[y1:y2, x1:x2]
+        y2 = min(image_np.shape[0], y + h + pad_h)
+        x1 = max(0, x - pad_w)
+        x2 = min(image_np.shape[1], x + w + pad_w)
+        
+        return image_np[y1:y2, x1:x2]
 
     def load_models(self):
         # ... (rest of load_models remains the same)
