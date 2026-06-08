@@ -31,26 +31,19 @@ async def predict_item_image(
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
 
     contents = await file.read()
-    # รีเซ็ตตำแหน่งอ่านไฟล์หากจำเป็น (ในกรณีนี้อ่านรอบเดียวจบ)
 
     try:
         predictions = await predictor_service.predict_all(contents)
     except Exception as e:
         import traceback
-        print(traceback.format_exc()) # แสดง log ใน terminal ของ server
+
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการทำนายผล: {str(e)}"
         )
 
-    full_vector = (
-        (predictions.get("age_result") or [])
-        + (predictions.get("gender_result") or [])
-        + (predictions.get("haircolor_result") or [])
-        + (predictions.get("hairstyle_result") or [])
-        + (predictions.get("eyebrows_result") or [])
-        + (predictions.get("skin_result") or [])
-        + (predictions.get("beard_result") or [])
-    )
+    # ใช้ Helper ในการรวม Vector และแปลงเป็นคำบรรยาย
+    full_vector = encoder.combine_results_to_vector(predictions)
     descriptions = encoder.vector_to_text(full_vector)
 
     return {
@@ -70,55 +63,22 @@ async def save_item_prediction(
     try:
         predictions_dict = json.loads(predictions_json)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="รูปแบบข้อมูล JSON ของผลทำนายไม่ถูกต้อง")
+        raise HTTPException(
+            status_code=400, detail="รูปแบบข้อมูล JSON ของผลทำนายไม่ถูกต้อง"
+        )
 
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
 
-    # จำกัดขนาดไฟล์ 5MB
     MAX_FILE_SIZE = 5 * 1024 * 1024
     if file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
 
-    # --- ส่วนที่ 1: แปลง Array เป็น Varchar (Text) ---
+    # --- ส่วนที่ 1: ใช้ Helper แปลง Array เป็นข้อความภาษาไทย ---
     try:
-        age_text = encoder.age_categories[np.argmax(predictions_dict["age_result"])]
-        gender_text = encoder.gender_categories[
-            np.argmax(predictions_dict["gender_result"])
-        ]
-
-        if sum(predictions_dict["hairstyle_result"]) == 0:
-            hairstyle_text = "ศีรษะล้าน"
-            haircolor_text = "ไม่ระบุ"
-        else:
-            hairstyle_text = encoder.hair_style_categories[
-                np.argmax(predictions_dict["hairstyle_result"])
-            ]
-            haircolor_text = encoder.hair_color_categories[
-                np.argmax(predictions_dict["haircolor_result"])
-            ]
-
-        skin_text = encoder.skin_categories[np.argmax(predictions_dict["skin_result"])]
-
-        # Multi-label
-        eyebrow_texts = [
-            cat
-            for i, cat in enumerate(encoder.eyebrow_categories)
-            if predictions_dict["eyebrows_result"][i] == 1
-        ]
-        eyebrow_string = ", ".join(eyebrow_texts) or "ไม่ระบุ"
-
-        beard_texts = [
-            cat
-            for i, cat in enumerate(encoder.beard_categories)
-            if predictions_dict["beard_result"][i] == 1
-        ]
-        beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
-    except (KeyError, IndexError) as e:
-        raise HTTPException(
-            status_code=400, detail=f"ข้อมูล Array ที่ส่งมาไม่ครบหรือไม่ถูกต้อง: {str(e)}"
-        )
-    # ----------------------------------------------
+        thai_desc = encoder.get_thai_description_dict(predictions_dict)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     contents = await file.read()
     file_extension = os.path.splitext(file.filename)[1]
@@ -136,30 +96,21 @@ async def save_item_prediction(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: {str(e)}"
         )
 
-    # --- ส่วนที่ 2: คำนวณ Vector 25 มิติ ---
-    full_vector = (
-        predictions_dict.get("age_result", [])
-        + predictions_dict.get("gender_result", [])
-        + predictions_dict.get("haircolor_result", [])
-        + predictions_dict.get("hairstyle_result", [])
-        + predictions_dict.get("eyebrows_result", [])
-        + predictions_dict.get("skin_result", [])
-        + predictions_dict.get("beard_result", [])
-    )
-    # แปลง numpy int64 เป็น standard int เพื่อให้ json.dumps ทำงานได้
+    # --- ส่วนที่ 2: ใช้ Helper คำนวณ Vector 25 มิติ ---
+    full_vector = encoder.combine_results_to_vector(predictions_dict)
     full_vector_list = [int(x) for x in full_vector]
 
     # --- ส่วนที่ 3: ส่งค่าเข้า Schema ---
     prediction_data = prediction_schema.PredictionCreate(
         image_filename=new_file_name,
         image_url=image_url,
-        age_result=age_text,
-        gender_result=gender_text,
-        haircolor_result=haircolor_text,
-        hairstyle_result=hairstyle_text,
-        eyebrows_result=eyebrow_string,
-        skin_result=skin_text,
-        beard_result=beard_string,
+        age_result=thai_desc["age"],
+        gender_result=thai_desc["gender"],
+        haircolor_result=thai_desc["haircolor"],
+        hairstyle_result=thai_desc["hairstyle"],
+        eyebrows_result=thai_desc["eyebrows"],
+        skin_result=thai_desc["skin"],
+        beard_result=thai_desc["beard"],
         prediction_vector=full_vector_list,
     )
 

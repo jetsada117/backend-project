@@ -176,5 +176,68 @@ class FeatureEncoder:
         df = pd.DataFrame([vector], columns=self.feature_names)
         return df.T
 
+    def combine_results_to_vector(self, pred_dict: dict) -> list:
+        """รวมผลจากโมเดลทุกตัวเป็น Vector เดียว (จบในที่เดียว)"""
+        keys = [
+            "age_result",
+            "gender_result",
+            "haircolor_result",
+            "hairstyle_result",
+            "eyebrows_result",
+            "skin_result",
+            "beard_result",
+        ]
+        full_vector = []
+        for key in keys:
+            full_vector.extend(pred_dict.get(key) or [])
+        return full_vector
+
+    def get_thai_description_dict(self, pred_dict: dict) -> dict:
+        """แปลงผลจากโมเดล (Array) เป็นข้อความภาษาไทยสำหรับแต่ละฟีเจอร์"""
+        try:
+            # ใช้ np.argmax เพื่อหา Index ที่มีความจุมากที่สุด
+            age_text = self.age_categories[np.argmax(pred_dict["age_result"])]
+            gender_text = self.gender_categories[np.argmax(pred_dict["gender_result"])]
+
+            if sum(pred_dict["hairstyle_result"]) == 0:
+                hairstyle_text = "ศีรษะล้าน"
+                haircolor_text = "ไม่ระบุ"
+            else:
+                hairstyle_text = self.hair_style_categories[
+                    np.argmax(pred_dict["hairstyle_result"])
+                ]
+                haircolor_text = self.hair_color_categories[
+                    np.argmax(pred_dict["haircolor_result"])
+                ]
+
+            skin_text = self.skin_categories[np.argmax(pred_dict["skin_result"])]
+
+            # Multi-label features
+            eyebrow_texts = [
+                cat
+                for i, cat in enumerate(self.eyebrow_categories)
+                if pred_dict["eyebrows_result"][i] == 1
+            ]
+            eyebrow_string = ", ".join(eyebrow_texts) or "ไม่ระบุ"
+
+            beard_texts = [
+                cat
+                for i, cat in enumerate(self.beard_categories)
+                if pred_dict["beard_result"][i] == 1
+            ]
+            beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
+
+            return {
+                "age": age_text,
+                "gender": gender_text,
+                "haircolor": haircolor_text,
+                "hairstyle": hairstyle_text,
+                "eyebrows": eyebrow_string,
+                "skin": skin_text,
+                "beard": beard_string,
+            }
+        except (KeyError, IndexError, ValueError) as e:
+            raise ValueError(f"ข้อมูลผลลัพธ์ไม่ถูกต้อง: {str(e)}")
+
 
 encoder = FeatureEncoder()

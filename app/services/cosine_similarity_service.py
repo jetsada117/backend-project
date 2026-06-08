@@ -77,5 +77,40 @@ class FaceSimilarityScorer:
         similarity = numerator / (num_a * num_b)
         return float(similarity)
 
+    def calculate_similarity_matrix(
+        self, vector_a: np.ndarray, matrix_b: np.ndarray
+    ) -> np.ndarray:
+        """
+        คำนวณ Weighted Cosine Similarity ระหว่าง 1 Vector กับ Matrix ของ DB พร้อมกันทั้งหมด
+        vector_a: shape (25,)
+        matrix_b: shape (N, 25)
+        """
+        w = self.expanded_weights
+
+        # 1. ทำ Active Mask (Dynamic Weight) ตาม Input Vector A
+        active_mask = vector_a != 0
+        dynamic_w = w * active_mask
+
+        if np.sum(dynamic_w) == 0:
+            return np.zeros(matrix_b.shape[0])
+
+        # 2. Apply Weight ให้ทั้ง Vector A และ Matrix B
+        A_w = vector_a * dynamic_w
+        B_w = matrix_b * dynamic_w
+
+        # 3. คำนวณ Dot Product (Numerator)
+        numerator = np.dot(B_w, A_w)
+
+        # 4. คำนวณ Norm (Denominator)
+        norm_a = np.sqrt(np.sum(A_w**2))
+        norm_b = np.sqrt(np.sum(B_w**2, axis=1))
+
+        # กันการหารด้วยศูนย์
+        denominator = norm_a * norm_b
+        denominator[denominator == 0] = 1e-9
+
+        # 5. คำนวณ Similarity Score ทั้งหมด
+        return numerator / denominator
+
 
 scorer = FaceSimilarityScorer()
