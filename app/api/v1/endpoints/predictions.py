@@ -22,10 +22,16 @@ async def predict_item_image(
     file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_active_user),
 ):
+    # จำกัดขนาดไฟล์ 5MB
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    if file.size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
+
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
 
     contents = await file.read()
+    # รีเซ็ตตำแหน่งอ่านไฟล์หากจำเป็น (ในกรณีนี้อ่านรอบเดียวจบ)
 
     try:
         predictions = await predictor_service.predict_all(contents)
@@ -66,6 +72,11 @@ async def save_item_prediction(
 
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="ไฟล์ต้องเป็นรูปภาพเท่านั้น")
+
+    # จำกัดขนาดไฟล์ 5MB
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    if file.size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
 
     # --- ส่วนที่ 1: แปลง Array เป็น Varchar (Text) ---
     try:
