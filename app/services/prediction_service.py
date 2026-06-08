@@ -4,6 +4,8 @@ import os
 import asyncio
 from PIL import Image
 import numpy as np
+import cv2
+import mediapipe as mp
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from tensorflow.keras.models import load_model  # type: ignore
@@ -32,8 +34,66 @@ class MultiModelPredictor:
         self.skin_model = None
         self.beard_model = None
         self.is_loaded = False
+        
+        # Initialize MediaPipe for face detection
+        self.mp_face_detection = mp.solutions.face_detection
+        self.face_detector = self.mp_face_detection.FaceDetection(
+            model_selection=1, min_detection_confidence=0.5
+        )
+
+    def _align_and_crop_face(self, image_np):
+        """
+        ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า
+        """
+        h, w, _ = image_np.shape
+        results = self.face_detector.process(cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB))
+        
+        if not results.detections:
+            return image_np  # หากไม่เจอใบหน้า ให้ใช้ภาพเดิม
+
+        detection = results.detections[0]
+        keypoints = detection.location_data.relative_keypoints
+        
+        # จุด Landmark ตาซ้ายและตาขวา (ในมุมมองของรูป)
+        # MediaPipe: 0=Right Eye (มุมมองเราคือซ้าย), 1=Left Eye (มุมมองเราคือขวา)
+        right_eye = (int(keypoints[0].x * w), int(keypoints[0].y * h))
+        left_eye = (int(keypoints[1].x * w), int(keypoints[1].y * h))
+
+        # 1. คำนวณมุมเอียงระหว่างดวงตา
+        dY = left_eye[1] - right_eye[1]
+        dX = left_eye[0] - right_eye[0]
+        angle = np.degrees(np.arctan2(dY, dX))
+
+        # 2. หมุนภาพ (Alignment)
+        eye_center = ((right_eye[0] + left_eye[0]) // 2, (right_eye[1] + left_eye[1]) // 2)
+        M = cv2.getRotationMatrix2D(eye_center, angle, 1.0)
+        rotated = cv2.warpAffine(image_np, M, (w, h), flags=cv2.INTER_CUBIC)
+
+        # 3. ตรวจหาใบหน้าอีกครั้งบนภาพที่หมุนแล้วเพื่อทำ Crop ที่แม่นยำ
+        results_rotated = self.face_detector.process(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
+        if not results_rotated.detections:
+            return rotated
+
+        # ใช้ Bounding Box ของ MediaPipe ในการ Crop (ขยายขนาดเผื่อผมและคาง)
+        bbox = results_rotated.detections[0].location_data.relative_bounding_box
+        x = int(bbox.xmin * w)
+        y = int(bbox.ymin * h)
+        box_w = int(bbox.width * w)
+        box_h = int(bbox.height * h)
+
+        # เพิ่ม Padding 30% รอบๆ
+        pad_w = int(box_w * 0.3)
+        pad_h = int(box_h * 0.3)
+        
+        x1 = max(0, x - pad_w)
+        y1 = max(0, y - pad_h)
+        x2 = min(w, x + box_w + pad_w)
+        y2 = min(h, y + box_h + pad_h)
+
+        return rotated[y1:y2, x1:x2]
 
     def load_models(self):
+        # ... (rest of load_models remains the same)
         """ฟังก์ชันสำหรับโหลดโมเดลเก็บไว้ใน Class (ทำหน้าที่เป็น In-memory Cache)"""
         if self.is_loaded:
             return
@@ -63,17 +123,26 @@ class MultiModelPredictor:
 
     def get_preprocessed_images(self, image_bytes: bytes):
         """
-        เปิดรูปภาพและ resize ไว้ล่วงหน้าเพียงครั้งเดียวสำหรับขนาดที่ต้องใช้ (224 และ 299)
-        เพื่อลดภาระของ CPU ในการประมวลผลซ้ำซ้อน
+        1. ทำ Face Alignment และ Crop เฉพาะใบหน้า
+        2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ
         """
-        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        # แปลง bytes เป็น numpy (OpenCV format)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
-        # เตรียมรูปขนาด 224 (สำหรับ ConvNeXt, EfficientNet)
-        img_224 = np.array(img.resize((224, 224)), dtype=np.float32)
+        # 1. ทำ Face Alignment & Crop (เพื่อให้โมเดลเห็นหน้าตรงและชัดเจนที่สุด)
+        img_processed = self._align_and_crop_face(img_raw)
+        
+        # แปลงกลับเป็น RGB สำหรับ PIL/TensorFlow
+        img_rgb = cv2.cvtColor(img_processed, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(img_rgb)
+        
+        # 2. เตรียมรูปขนาด 224 (สำหรับ ConvNeXt, EfficientNet)
+        img_224 = np.array(img_pil.resize((224, 224)), dtype=np.float32)
         img_224 = np.expand_dims(img_224, axis=0)
         
         # เตรียมรูปขนาด 299 (สำหรับ Inception)
-        img_299 = np.array(img.resize((299, 299)), dtype=np.float32)
+        img_299 = np.array(img_pil.resize((299, 299)), dtype=np.float32)
         img_299 = np.expand_dims(img_299, axis=0)
 
         return {
