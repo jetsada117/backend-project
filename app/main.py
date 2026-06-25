@@ -13,6 +13,7 @@ from app.core.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Starting up FastAPI application...")
@@ -21,7 +22,8 @@ async def lifespan(app: FastAPI):
     print("Shutting down FastAPI application...")
 
 
-app = FastAPI(title="fastapi", lifespan=lifespan)
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
 
 # Middleware สำหรับดักจับ Error และแสดง Log
 @app.middleware("http")
@@ -34,9 +36,10 @@ async def catch_exceptions_middleware(request: Request, call_next):
             status_code=500,
             content={
                 "detail": "Internal Server Error",
-                "traceback": traceback.format_exc() if settings.DEBUG else None
-            }
+                "traceback": traceback.format_exc() if settings.DEBUG else None,
+            },
         )
+
 
 app.include_router(api_router, prefix="/api/v1")
 
