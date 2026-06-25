@@ -48,7 +48,7 @@ async def predict_item_image(
         )
     ml_elapsed_time = time.perf_counter() - ml_start_time
     logger.info(
-        f"User: {current_user.email} | ML Model Predictions finished | "
+        f"User ID: {current_user.id} | ML Model Predictions finished | "
         f"Taken: {ml_elapsed_time:.4f}s"
     )
 
