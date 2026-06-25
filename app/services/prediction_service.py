@@ -2,7 +2,7 @@
 import io
 import os
 import asyncio
-from PIL import Image
+import threading
 import numpy as np
 import cv2
 from pathlib import Path
@@ -33,9 +33,12 @@ class MultiModelPredictor:
         self.skin_model = None
         self.beard_model = None
         self.is_loaded = False
-        
+
         # สร้าง ThreadPoolExecutor เพียงครั้งเดียวเพื่อใช้ซ้ำ (Singleton Pattern)
         self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
+
+        # Lock สำหรับโหลดโมเดลเพื่อป้องกัน Race Condition
+        self._lock = threading.Lock()
 
         # Initialize OpenCV Face and Eye detectors
         self.face_cascade = cv2.CascadeClassifier(
@@ -51,36 +54,36 @@ class MultiModelPredictor:
         """
         gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
-        
+
         if len(faces) == 0:
             return image_np
 
         # เลือกใบหน้าที่ใหญ่ที่สุด
-        (x, y, w, h) = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
-        roi_gray = gray[y:y+h, x:x+w]
-        roi_color = image_np[y:y+h, x:x+w]
+        x, y, w, h = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
+        roi_gray = gray[y : y + h, x : x + w]
+        roi_color = image_np[y : y + h, x : x + w]
 
         # ตรวจหาดวงตาภายในใบหน้าเพื่อทำ Alignment
         eyes = self.eye_cascade.detectMultiScale(roi_gray)
-        
+
         if len(eyes) >= 2:
             # เลือกดวงตา 2 ดวงที่อยู่ด้านบนที่สุด
             eyes = sorted(eyes, key=lambda e: e[1])[:2]
             # เรียงจากซ้ายไปขวา
             eyes = sorted(eyes, key=lambda e: e[0])
-            
-            (ex1, ey1, ew1, eh1) = eyes[0]
-            (ex2, ey2, ew2, eh2) = eyes[1]
-            
+
+            ex1, ey1, ew1, eh1 = eyes[0]
+            ex2, ey2, ew2, eh2 = eyes[1]
+
             # จุดศูนย์กลางดวงตา
-            eye_left = (x + ex1 + ew1//2, y + ey1 + eh1//2)
-            eye_right = (x + ex2 + ew2//2, y + ey2 + eh2//2)
-            
+            eye_left = (x + ex1 + ew1 // 2, y + ey1 + eh1 // 2)
+            eye_right = (x + ex2 + ew2 // 2, y + ey2 + eh2 // 2)
+
             # คำนวณมุมเอียง
             dY = eye_right[1] - eye_left[1]
             dX = eye_right[0] - eye_left[0]
             angle = np.degrees(np.arctan2(dY, dX))
-            
+
             # 2. หมุนภาพ (Alignment)
             eye_center = (
                 float((eye_right[0] + eye_left[0]) / 2),
@@ -88,24 +91,29 @@ class MultiModelPredictor:
             )
             M = cv2.getRotationMatrix2D(eye_center, float(angle), 1.0)
             image_np = cv2.warpAffine(
-                image_np, M, (image_np.shape[1], image_np.shape[0]), flags=cv2.INTER_CUBIC
+                image_np,
+                M,
+                (image_np.shape[1], image_np.shape[0]),
+                flags=cv2.INTER_CUBIC,
             )
 
             # ตรวจหาใบหน้าอีกครั้งหลังหมุนเพื่อให้ Crop ได้แม่นยำ
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
             faces_rot = self.face_cascade.detectMultiScale(gray_rot, 1.3, 5)
             if len(faces_rot) > 0:
-                (x, y, w, h) = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[0]
+                x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[
+                    0
+                ]
 
         # Crop ใบหน้า (เพิ่ม Padding 20%)
         pad_w = int(w * 0.2)
         pad_h = int(h * 0.2)
-        
+
         y1 = max(0, y - pad_h)
         y2 = min(image_np.shape[0], y + h + pad_h)
         x1 = max(0, x - pad_w)
         x2 = min(image_np.shape[1], x + w + pad_w)
-        
+
         return image_np[y1:y2, x1:x2]
 
     def load_models(self):
@@ -113,75 +121,86 @@ class MultiModelPredictor:
         if self.is_loaded:
             return
 
-        REPO_ID = "Jetsada117/models_project"
-        print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
+        with self._lock:
+            # Double-checked locking ป้องกันโหลดซ้ำซ้อนในสภาวะ concurrent
+            if self.is_loaded:
+                return
 
-        def get_model(filename):
-            path = hf_hub_download(
-                repo_id=REPO_ID, filename=filename, token=settings.HF
+            REPO_ID = "Jetsada117/models_project"
+            print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
+
+            def get_model(filename):
+                path = hf_hub_download(
+                    repo_id=REPO_ID, filename=filename, token=settings.HF
+                )
+                return load_model(path)
+
+            self.age_model = get_model("age_finetuned_model_convnext.keras")
+            self.age_regression_model = get_model(
+                "age_convnext_finetuned_regression_model.keras"
             )
-            return load_model(path)
+            self.gender_model = get_model("gender_best_model_efficientnet.keras")
+            self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
+            self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
+            self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
+            self.skin_model = get_model("skin_best_model_inception.keras")
+            self.beard_model = get_model("beard_best_model_convnext.keras")
 
-        self.age_model = get_model("age_finetuned_model_convnext.keras")
-        self.age_regression_model = get_model(
-            "age_convnext_finetuned_regression_model.keras"
-        )
-        self.gender_model = get_model("gender_best_model_efficientnet.keras")
-        self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
-        self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
-        self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
-        self.skin_model = get_model("skin_best_model_inception.keras")
-        self.beard_model = get_model("beard_best_model_convnext.keras")
+            # --- ส่วนของ Model Warm-up ---
+            print("🔥 Warming up models with dummy data...")
+            try:
+                dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
+                dummy_input_299 = np.zeros((1, 299, 299, 3), dtype=np.float32)
 
-        # --- ส่วนของ Model Warm-up ---
-        print("🔥 Warming up models with dummy data...")
-        try:
-            dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
-            dummy_input_299 = np.zeros((1, 299, 299, 3), dtype=np.float32)
-            
-            self.age_model.predict(dummy_input_224, verbose=0)
-            self.age_regression_model.predict(dummy_input_224, verbose=0)
-            self.gender_model.predict(dummy_input_224, verbose=0)
-            self.haircolor_model.predict(dummy_input_224, verbose=0)
-            self.hairstyle_model.predict(dummy_input_299, verbose=0)
-            self.eyebrows_model.predict(dummy_input_224, verbose=0)
-            self.skin_model.predict(dummy_input_299, verbose=0)
-            self.beard_model.predict(dummy_input_224, verbose=0)
-            
-            print("✅ Warm-up complete! System is ready for fast response.")
-        except Exception as e:
-            print(f"⚠️ Warm-up failed: {e}")
+                self.age_model(dummy_input_224, training=False)
+                self.age_regression_model(dummy_input_224, training=False)
+                self.gender_model(dummy_input_224, training=False)
+                self.haircolor_model(dummy_input_224, training=False)
+                self.hairstyle_model(dummy_input_299, training=False)
+                self.eyebrows_model(dummy_input_224, training=False)
+                self.skin_model(dummy_input_299, training=False)
+                self.beard_model(dummy_input_224, training=False)
 
-        self.is_loaded = True
-        print("All models loaded successfully!")
+                print("✅ Warm-up complete! System is ready for fast response.")
+            except Exception as e:
+                print(f"⚠️ Warm-up failed: {e}")
+
+            self.is_loaded = True
+            print("All models loaded successfully!")
 
     def get_preprocessed_images(self, image_bytes: bytes):
         """
         1. ทำ Face Alignment และ Crop เฉพาะใบหน้า
-        2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ
+            2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ โดยใช้ OpenCV
         """
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
+
         if img_raw is None:
             raise ValueError("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาตรวจสอบไฟล์ที่อัปโหลด")
-        
+
         img_processed = self._align_and_crop_face(img_raw)
-        
+
+        if img_processed is None or img_processed.size == 0:
+            raise ValueError("ไม่พบใบหน้าในรูปภาพ กรุณาอัปโหลดรูปที่เห็นใบหน้าชัดเจน")
+
         img_rgb = cv2.cvtColor(img_processed, cv2.COLOR_BGR2RGB)
-        img_pil = Image.fromarray(img_rgb)
-        
-        img_224 = np.array(img_pil.resize((224, 224)), dtype=np.float32)
+
+        img_224 = cv2.resize(
+            img_rgb, (224, 224), interpolation=cv2.INTER_LINEAR
+        ).astype(np.float32)
         img_224 = np.expand_dims(img_224, axis=0)
-        
-        img_299 = np.array(img_pil.resize((299, 299)), dtype=np.float32)
+
+        img_299 = cv2.resize(
+            img_rgb, (299, 299), interpolation=cv2.INTER_LINEAR
+        ).astype(np.float32)
         img_299 = np.expand_dims(img_299, axis=0)
 
         return {
             "convnext": convnext_preprocess(img_224.copy()),
             "inception": inception_preprocess(img_299.copy()),
             "efficientnet": efficientnet_preprocess(img_224.copy()),
-            "default": img_224 / 255.0
+            "default": img_224 / 255.0,
         }
 
     def _map_age_to_range(self, age: float) -> list:
@@ -199,29 +218,30 @@ class MultiModelPredictor:
             return [0, 0, 0, 0, 0, 1]
 
     def _predict_age_regression(self, processed_image):
-        pred_age = self.age_regression_model.predict(processed_image, verbose=0)[0][0]
+        pred = self.age_regression_model(processed_image, training=False).numpy()
+        pred_age = pred[0][0]
         return self._map_age_to_range(pred_age)
 
     def _predict_age(self, processed_image):
-        pred_probs = self.age_model.predict(processed_image, verbose=0)[0]
+        pred_probs = self.age_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
         result[predicted_index] = 1
         return result
 
     def _predict_gender(self, processed_image):
-        pred_prob = self.gender_model.predict(processed_image, verbose=0)[0][0]
+        pred_prob = self.gender_model(processed_image, training=False).numpy()[0][0]
         return [0, 1] if pred_prob > 0.5 else [1, 0]
 
     def _predict_haircolor(self, processed_image):
-        pred_probs = self.haircolor_model.predict(processed_image, verbose=0)[0]
+        pred_probs = self.haircolor_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
         result[predicted_index] = 1
         return result
 
     def _predict_hairstyle(self, processed_image):
-        pred_probs = self.hairstyle_model.predict(processed_image, verbose=0)[0]
+        pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         if predicted_index == 0:
             return [0, 0]
@@ -231,65 +251,37 @@ class MultiModelPredictor:
             return [0, 1]
 
     def _predict_eyebrows(self, processed_image):
-        pred_probs = self.eyebrows_model.predict(processed_image, verbose=0)[0]
-        return [1 if prob > 0.5 else 0 for prob in pred_probs]
+        pred_probs = self.eyebrows_model(processed_image, training=False).numpy()[0]
+        return (pred_probs > 0.5).astype(int).tolist()
 
     def _predict_skin(self, processed_image):
-        pred_probs = self.skin_model.predict(processed_image, verbose=0)[0]
+        pred_probs = self.skin_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
         result[predicted_index] = 1
         return result
 
     def _predict_beard(self, processed_image):
-        pred_probs = self.beard_model.predict(processed_image, verbose=0)[0]
-        return [1 if prob > 0.5 else 0 for prob in pred_probs]
+        pred_probs = self.beard_model(processed_image, training=False).numpy()[0]
+        return (pred_probs > 0.5).astype(int).tolist()
 
-    async def predict_all(self, image_bytes: bytes) -> dict:
-        """รันโมเดลทั้งหมดพร้อมกันโดยใช้รูปที่ผ่านการ Preprocess ล่วงหน้าเพียงครั้งเดียว"""
-        loop = asyncio.get_running_loop()
-        
-        # ทำ Preprocess เพียงครั้งเดียว (CPU intensive)
-        preprocessed = await loop.run_in_executor(self.executor, self.get_preprocessed_images, image_bytes)
+    def _run_predictions(self, preprocessed):
+        """
+        รันทุกโมเดลทีละตัวแบบเรียงลำดับ (Sequential)
+        ฟังก์ชันนี้จะทำงานอยู่บน Worker Thread เดียว ไม่สร้างความภาระสลับเธรด
+        """
+        hairstyle_res = self._predict_hairstyle(preprocessed["inception"])
+        if hairstyle_res == [0, 0]:
+            num_haircolor_classes = self.haircolor_model.output_shape[-1]
+            haircolor_res = [0] * num_haircolor_classes
+        else:
+            haircolor_res = self._predict_haircolor(preprocessed["convnext"])
 
-        async def get_hair_features():
-            hairstyle_res = await loop.run_in_executor(
-                self.executor, self._predict_hairstyle, preprocessed["inception"]
-            )
-
-            if hairstyle_res == [0, 0]:
-                num_haircolor_classes = self.haircolor_model.output_shape[-1]
-                haircolor_res = [0] * num_haircolor_classes
-            else:
-                haircolor_res = await loop.run_in_executor(
-                    self.executor, self._predict_haircolor, preprocessed["convnext"]
-                )
-
-            return haircolor_res, hairstyle_res
-
-        task_age = loop.run_in_executor(
-            self.executor, self._predict_age_regression, preprocessed["convnext"]
-        )
-        task_gender = loop.run_in_executor(self.executor, self._predict_gender, preprocessed["efficientnet"])
-        task_hair = get_hair_features()
-        task_eyebrows = loop.run_in_executor(
-            self.executor, self._predict_eyebrows, preprocessed["convnext"]
-        )
-        task_skin = loop.run_in_executor(self.executor, self._predict_skin, preprocessed["inception"])
-        task_beard = loop.run_in_executor(self.executor, self._predict_beard, preprocessed["convnext"])
-
-        res_age, res_gender, res_hair, res_eyebrows, res_skin, res_beard = (
-            await asyncio.gather(
-                task_age,
-                task_gender,
-                task_hair,
-                task_eyebrows,
-                task_skin,
-                task_beard,
-            )
-        )
-
-        haircolor_res, hairstyle_res = res_hair
+        res_age = self._predict_age_regression(preprocessed["convnext"])
+        res_gender = self._predict_gender(preprocessed["efficientnet"])
+        res_eyebrows = self._predict_eyebrows(preprocessed["convnext"])
+        res_skin = self._predict_skin(preprocessed["inception"])
+        res_beard = self._predict_beard(preprocessed["convnext"])
 
         return {
             "age_result": res_age,
@@ -300,6 +292,22 @@ class MultiModelPredictor:
             "skin_result": res_skin,
             "beard_result": res_beard,
         }
+
+    async def predict_all(self, image_bytes: bytes) -> dict:
+        """
+        ฟังก์ชันหลักที่ API เรียกใช้งาน
+        """
+        loop = asyncio.get_running_loop()
+
+        preprocessed = await loop.run_in_executor(
+            self.executor, self.get_preprocessed_images, image_bytes
+        )
+
+        results = await loop.run_in_executor(
+            self.executor, self._run_predictions, preprocessed
+        )
+
+        return results
 
 
 predictor_service = MultiModelPredictor()
