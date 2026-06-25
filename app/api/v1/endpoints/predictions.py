@@ -1,6 +1,8 @@
 import os
 import uuid
 import json
+import logging
+import time
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,7 @@ from app.crud import predictions as prediction_crud
 from app.schemas import predictions as prediction_schema
 import numpy as np
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -32,6 +35,8 @@ async def predict_item_image(
 
     contents = await file.read()
 
+    # บันทึกเวลาเริ่มต้นการรันโมเดลทำนายผล
+    ml_start_time = time.perf_counter()
     try:
         predictions = await predictor_service.predict_all(contents)
     except Exception as e:
@@ -41,6 +46,11 @@ async def predict_item_image(
         raise HTTPException(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการทำนายผล: {str(e)}"
         )
+    ml_elapsed_time = time.perf_counter() - ml_start_time
+    logger.info(
+        f"User: {current_user.email} | ML Model Predictions finished | "
+        f"Taken: {ml_elapsed_time:.4f}s"
+    )
 
     # ใช้ Helper ในการรวม Vector และแปลงเป็นคำบรรยาย
     full_vector = encoder.combine_results_to_vector(predictions)

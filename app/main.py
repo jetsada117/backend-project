@@ -25,11 +25,25 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 
-# Middleware สำหรับดักจับ Error และแสดง Log
+# Middleware สำหรับดักจับ Error และบันทึกเวลาในการประมวลผล (Execution Time)
+import time
+
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
+    start_time = time.perf_counter()
     try:
-        return await call_next(request)
+        response = await call_next(request)
+        process_time = time.perf_counter() - start_time
+        
+        # บันทึก log เวลาในการประมวลผลสำหรับทุก API Request
+        logger.info(
+            f"IP: {request.client.host} | Method: {request.method} | "
+            f"Path: {request.url.path} | Status: {response.status_code} | "
+            f"Taken: {process_time:.4f}s"
+        )
+        # แนบเวลาประมวลผลส่งกลับไปใน HTTP Header ด้วย เพื่อเป็นประโยชน์ในการ Debug ฝั่ง Client
+        response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+        return response
     except Exception as exc:
         logger.error(f"Global Error Catch: {str(exc)}", exc_info=True)
         return JSONResponse(
