@@ -9,9 +9,8 @@ from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 from app.core.config import settings
 
-# ตั้งค่า Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ตั้งค่า Logging ให้ใช้ร่วมกับ Uvicorn เพื่อแสดงผลใน log หลัก
+logger = logging.getLogger("uvicorn")
 
 
 @asynccontextmanager

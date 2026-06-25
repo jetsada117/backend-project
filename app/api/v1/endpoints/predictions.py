@@ -16,7 +16,7 @@ from app.crud import predictions as prediction_crud
 from app.schemas import predictions as prediction_schema
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 router = APIRouter()
 
 
