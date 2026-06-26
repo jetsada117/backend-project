@@ -34,9 +34,9 @@ async def send_otp_email(email_to: str, otp_code: str):
             )
 
             if response.status_code in (201, 200):
-                print(f"✅ ส่งอีเมล OTP สำเร็จ (ผ่าน Brevo API)")
+                print(f"[SUCCESS] ส่งอีเมล OTP สำเร็จ (ผ่าน Brevo API)")
             else:
-                print(f"❌ เกิดข้อผิดพลาดจาก Brevo: {response.text}")
+                print(f"[ERROR] เกิดข้อผิดพลาดจาก Brevo: {response.text}")
 
     except Exception as e:
-        print(f"❌ ไม่สามารถส่ง API ได้: {e}")
+        print(f"[ERROR] ไม่สามารถส่ง API ได้: {e}")

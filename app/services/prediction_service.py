@@ -147,7 +147,7 @@ class MultiModelPredictor:
             self.beard_model = get_model("beard_best_model_convnext.keras")
 
             # --- ส่วนของ Model Warm-up ---
-            print("🔥 Warming up models with dummy data...")
+            print("[INFO] Warming up models with dummy data...")
             try:
                 dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
                 dummy_input_299 = np.zeros((1, 299, 299, 3), dtype=np.float32)
@@ -161,9 +161,9 @@ class MultiModelPredictor:
                 self.skin_model(dummy_input_299, training=False)
                 self.beard_model(dummy_input_224, training=False)
 
-                print("✅ Warm-up complete! System is ready for fast response.")
+                print("[SUCCESS] Warm-up complete! System is ready for fast response.")
             except Exception as e:
-                print(f"⚠️ Warm-up failed: {e}")
+                print(f"[WARNING] Warm-up failed: {e}")
 
             self.is_loaded = True
             print("All models loaded successfully!")
