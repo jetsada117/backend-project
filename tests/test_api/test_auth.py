@@ -49,15 +49,50 @@ async def test_get_current_user(client: AsyncClient):
     
     headers = {"Authorization": f"Bearer {token}"}
     response = await client.get("/api/v1/user/me", headers=headers)
-    
-    # Wait, /user/me in endpoints/user.py is a PATCH. 
-    # Let's check if there is a GET /me.
-    # Looking at app/api/v1/endpoints/user.py... it only has PATCH /me.
-    # Let's check api.py or other files.
-    # Actually, deps.py has get_current_user which is used by many.
-    
-    # If there's no GET /user/me, this test will fail. 
-    # Let's double check app/api/v1/endpoints/user.py.
-    # It only has @router.patch("/me").
-    
     assert response.status_code == 405 # Method Not Allowed if only PATCH exists
+
+@pytest.mark.asyncio
+async def test_update_user_me(client: AsyncClient):
+    # Login to get token
+    login_data = {"email": "test@example.com", "password": "password123"}
+    login_res = await client.post("/api/v1/auth/login", json=login_data)
+    token = login_res.json()["access_token"]
+    
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {
+        "first_name": "UpdatedFirst",
+        "last_name": "UpdatedLast"
+    }
+    response = await client.patch("/api/v1/user/me", headers=headers, data=data)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert res_data["first_name"] == "UpdatedFirst"
+    assert res_data["last_name"] == "UpdatedLast"
+
+    # Test updating avatar as well
+    files = {"avatar": ("new_avatar.jpg", b"new-fake-image", "image/jpeg")}
+    response = await client.patch("/api/v1/user/me", headers=headers, files=files)
+    assert response.status_code == 200
+    res_data = response.json()
+    assert "profile_image_url" in res_data
+
+@pytest.mark.asyncio
+async def test_refresh_token(client: AsyncClient):
+    login_data = {"email": "test@example.com", "password": "password123"}
+    login_res = await client.post("/api/v1/auth/login", json=login_data)
+    refresh_token = login_res.json()["refresh_token"]
+    
+    response = await client.post(f"/api/v1/auth/refresh-token?refresh_token={refresh_token}")
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["refresh_token"] == refresh_token
+    assert "user" in data
+    assert data["user"]["email"] == "test@example.com"
+
+@pytest.mark.asyncio
+async def test_logout(client: AsyncClient):
+    response = await client.post("/api/v1/auth/logout")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Successfully logged out"
+
