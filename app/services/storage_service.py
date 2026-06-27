@@ -9,15 +9,13 @@ class StorageService:
         self._s3_client = None
 
     async def _get_client(self):
-        if self._s3_client is None:
-            self._s3_client = self.session.client(
-                "s3",
-                endpoint_url=self.endpoint_url,
-                aws_access_key_id=settings.R2_ACCESS_KEY,
-                aws_secret_access_key=settings.R2_SECRET_KEY,
-                region_name="auto",
-            )
-        return self._s3_client
+        return self.session.client(
+            "s3",
+            endpoint_url=self.endpoint_url,
+            aws_access_key_id=settings.R2_ACCESS_KEY,
+            aws_secret_access_key=settings.R2_SECRET_KEY,
+            region_name="auto",
+        )
 
     async def upload_file(
         self,
