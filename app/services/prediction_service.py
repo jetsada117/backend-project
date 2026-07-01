@@ -48,7 +48,7 @@ class MultiModelPredictor:
             os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
         )
 
-    def _align_and_crop_face(self, image_np):
+    def align_and_crop_face(self, image_np):
         """
         ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า โดยใช้ OpenCV Haar Cascades
         """
@@ -58,33 +58,25 @@ class MultiModelPredictor:
         if len(faces) == 0:
             return image_np
 
-        # เลือกใบหน้าที่ใหญ่ที่สุด
         x, y, w, h = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
         roi_gray = gray[y : y + h, x : x + w]
-        roi_color = image_np[y : y + h, x : x + w]
 
-        # ตรวจหาดวงตาภายในใบหน้าเพื่อทำ Alignment
         eyes = self.eye_cascade.detectMultiScale(roi_gray)
 
         if len(eyes) >= 2:
-            # เลือกดวงตา 2 ดวงที่อยู่ด้านบนที่สุด
             eyes = sorted(eyes, key=lambda e: e[1])[:2]
-            # เรียงจากซ้ายไปขวา
             eyes = sorted(eyes, key=lambda e: e[0])
 
             ex1, ey1, ew1, eh1 = eyes[0]
             ex2, ey2, ew2, eh2 = eyes[1]
 
-            # จุดศูนย์กลางดวงตา
             eye_left = (x + ex1 + ew1 // 2, y + ey1 + eh1 // 2)
             eye_right = (x + ex2 + ew2 // 2, y + ey2 + eh2 // 2)
 
-            # คำนวณมุมเอียง
             dY = eye_right[1] - eye_left[1]
             dX = eye_right[0] - eye_left[0]
             angle = np.degrees(np.arctan2(dY, dX))
 
-            # 2. หมุนภาพ (Alignment)
             eye_center = (
                 float((eye_right[0] + eye_left[0]) / 2),
                 float((eye_right[1] + eye_left[1]) / 2),
@@ -97,7 +89,6 @@ class MultiModelPredictor:
                 flags=cv2.INTER_CUBIC,
             )
 
-            # ตรวจหาใบหน้าอีกครั้งหลังหมุนเพื่อให้ Crop ได้แม่นยำ
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
             faces_rot = self.face_cascade.detectMultiScale(gray_rot, 1.3, 5)
             if len(faces_rot) > 0:
@@ -105,7 +96,6 @@ class MultiModelPredictor:
                     0
                 ]
 
-        # Crop ใบหน้า (เพิ่ม Padding 20%)
         pad_w = int(w * 0.2)
         pad_h = int(h * 0.2)
 
