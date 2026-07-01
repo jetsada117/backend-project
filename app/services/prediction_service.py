@@ -48,7 +48,7 @@ class MultiModelPredictor:
             os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
         )
 
-    def align_and_crop_face(self, image_np):
+    def _align_and_crop_face(self, image_np):
         """
         ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า โดยใช้ OpenCV Haar Cascades
         """
