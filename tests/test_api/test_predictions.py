@@ -20,7 +20,7 @@ async def auth_headers(client: AsyncClient):
     files = {"file": ("test.jpg", DUMMY_VALID_IMAGE, "image/jpeg")}
     await client.post("/api/v1/auth/register", data={
         "first_name": "Pred", "last_name": "User", 
-        "email": "pred@example.com", "password": "pass", "otp_code": "1234"
+        "email": "pred@example.com", "password": "pass", "otp_code": "123456"
     }, files=files)
     
     login_res = await client.post("/api/v1/auth/login", json={"email": "pred@example.com", "password": "pass"})

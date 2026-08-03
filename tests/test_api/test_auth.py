@@ -16,7 +16,7 @@ async def test_register_user(client: AsyncClient):
         "last_name": "User",
         "email": "test@example.com",
         "password": "password123",
-        "otp_code": "1234"
+        "otp_code": "123456"
     }
     
     response = await client.post("/api/v1/auth/register", data=data, files=files)

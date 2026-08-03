@@ -50,7 +50,7 @@ async def test_redis_save_otp_mocked(mocker):
     mock_redis.setex = mocker.AsyncMock()
     
     email = "unit-test@example.com"
-    otp = "1234"
+    otp = "123456"
     await redis_service.save_otp(email, otp, expire_minutes=5)
     
     # ตรวจสอบการเรียก setex ด้วย key, TTL (5 นาที = 300 วินาที), และ otp
@@ -61,11 +61,11 @@ async def test_redis_save_otp_mocked(mocker):
 async def test_redis_verify_otp_success_mocked(mocker):
     """ทดสอบยืนยัน OTP สำเร็จ (Mock)"""
     mock_redis = mocker.patch("app.services.redis_service.redis_client")
-    mock_redis.get = mocker.AsyncMock(return_value="1234")
+    mock_redis.get = mocker.AsyncMock(return_value="123456")
     mock_redis.delete = mocker.AsyncMock()
     
     email = "unit-test@example.com"
-    is_valid = await redis_service.verify_otp(email, "1234")
+    is_valid = await redis_service.verify_otp(email, "123456")
     
     assert is_valid is True
     mock_redis.get.assert_called_once_with(f"otp:{email}")
@@ -76,11 +76,11 @@ async def test_redis_verify_otp_success_mocked(mocker):
 async def test_redis_verify_otp_failure_mocked(mocker):
     """ทดสอบยืนยัน OTP ไม่สำเร็จ หรือใส่ผิด (Mock)"""
     mock_redis = mocker.patch("app.services.redis_service.redis_client")
-    mock_redis.get = mocker.AsyncMock(return_value="1234")
+    mock_redis.get = mocker.AsyncMock(return_value="123456")
     mock_redis.delete = mocker.AsyncMock()
     
     email = "unit-test@example.com"
-    is_valid = await redis_service.verify_otp(email, "9999")  # OTP ไม่ตรง
+    is_valid = await redis_service.verify_otp(email, "999999")  # OTP ไม่ตรง
     
     assert is_valid is False
     mock_redis.get.assert_called_once_with(f"otp:{email}")
@@ -102,7 +102,7 @@ async def test_send_otp_email_mocked(mocker):
     mock_client_class.return_value.__aenter__.return_value = mock_client
     
     email = "unit-test@example.com"
-    otp = "5678"
+    otp = "567890"
     
     await email_service.send_otp_email(email, otp)
     
@@ -153,7 +153,7 @@ async def test_redis_otp_real(mocker):
     mocker.patch("app.services.redis_service.redis_client", real_redis_client)
     
     test_email = "real-test-otp@example.com"
-    test_otp = f"{random.randint(1000, 9999)}"
+    test_otp = f"{random.randint(100000, 999999)}"
     
     try:
         # 1. เคลียร์ค่าเก่าก่อนเริ่ม
@@ -196,7 +196,7 @@ async def test_send_otp_email_real(mocker):
     # ส่งเข้าอีเมลผู้รับ (หากกำหนด TEST_RECIPIENT_EMAIL ใน .env จะส่งไปที่นั่น มิฉะนั้นจะส่งเข้าอีเมลตัวเองที่ส่ง)
     target_email = real_env.get("TEST_RECIPIENT_EMAIL") or gmail_sender
     
-    test_otp = f"{random.randint(1000, 9999)}"
+    test_otp = f"{random.randint(100000, 999999)}"
     print(f"\n[INFO] กำลังส่งอีเมลจริงไปที่ {target_email} ด้วย OTP: {test_otp}...")
     
     # ตรงนี้จะทำการส่งอีเมลจริงออกไป
