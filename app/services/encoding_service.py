@@ -201,7 +201,7 @@ class FeatureEncoder:
 
             if sum(pred_dict["hairstyle_result"]) == 0:
                 hairstyle_text = "ศีรษะล้าน"
-                haircolor_text = "ไม่ระบุ"
+                haircolor_text = ""
             else:
                 hairstyle_text = self.hair_style_categories[
                     np.argmax(pred_dict["hairstyle_result"])
@@ -218,14 +218,14 @@ class FeatureEncoder:
                 for i, cat in enumerate(self.eyebrow_categories)
                 if pred_dict["eyebrows_result"][i] == 1
             ]
-            eyebrow_string = ", ".join(eyebrow_texts) or "ไม่ระบุ"
+            eyebrow_string = ", ".join(eyebrow_texts)
 
             beard_texts = [
                 cat
                 for i, cat in enumerate(self.beard_categories)
                 if pred_dict["beard_result"][i] == 1
             ]
-            beard_string = ", ".join(beard_texts) or "ไม่ระบุ"
+            beard_string = ", ".join(beard_texts)
 
             return {
                 "age": age_text,

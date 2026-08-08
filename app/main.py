@@ -1,5 +1,6 @@
 import traceback
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -23,9 +24,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
-
-
-import time
 
 
 @app.middleware("http")
