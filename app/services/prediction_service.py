@@ -153,6 +153,7 @@ class MultiModelPredictor:
             print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
             def get_model(filename):
+                filename = filename.lstrip("/")
                 path = hf_hub_download(
                     repo_id=REPO_ID, filename=filename, token=settings.HF
                 )
@@ -162,7 +163,7 @@ class MultiModelPredictor:
             self.age_regression_model = get_model(
                 "age_convnext_finetuned_regression_model.keras"
             )
-            self.gender_model = get_model("/gender/gender_base_model_convnext_op.keras")
+            self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
             self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
             self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
             self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
@@ -303,7 +304,7 @@ class MultiModelPredictor:
             haircolor_res = self._predict_haircolor(preprocessed["convnext"])
 
         res_age = self._predict_age_regression(preprocessed["convnext"])
-        res_gender = self._predict_gender(preprocessed["efficientnet"])
+        res_gender = self._predict_gender(preprocessed["convnext"])
         res_eyebrows = self._predict_eyebrows(preprocessed["convnext"])
         res_skin = self._predict_skin(preprocessed["inception"])
         res_beard = self._predict_beard(preprocessed["convnext"])
