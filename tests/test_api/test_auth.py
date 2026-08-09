@@ -5,7 +5,7 @@ from httpx import AsyncClient
 async def test_request_otp(client: AsyncClient):
     response = await client.post("/api/v1/auth/request-otp", data={"email": "test@example.com"})
     assert response.status_code == 200
-    assert response.json()["message"] == "OTP sent to your email"
+    assert response.json()["message"] == "ส่งรหัส OTP ไปยังอีเมลของคุณเรียบร้อยแล้ว"
 
 @pytest.mark.asyncio
 async def test_register_user(client: AsyncClient):
@@ -21,7 +21,7 @@ async def test_register_user(client: AsyncClient):
     
     response = await client.post("/api/v1/auth/register", data=data, files=files)
     assert response.status_code == 200
-    assert response.json()["message"] == "Registration successful"
+    assert response.json()["message"] == "ลงทะเบียนสำเร็จ"
 
 @pytest.mark.asyncio
 async def test_login_user(client: AsyncClient):
@@ -94,5 +94,5 @@ async def test_refresh_token(client: AsyncClient):
 async def test_logout(client: AsyncClient):
     response = await client.post("/api/v1/auth/logout")
     assert response.status_code == 200
-    assert response.json()["message"] == "Successfully logged out"
+    assert response.json()["message"] == "ออกจากระบบสำเร็จ"
 

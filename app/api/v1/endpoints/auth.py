@@ -38,7 +38,7 @@ async def login_access_token(
         db, email=login_data.email, password=login_data.password
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect email or password")
+        raise HTTPException(status_code=400, detail="อีเมลหรือรหัสผ่านไม่ถูกต้อง")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
@@ -65,14 +65,14 @@ async def request_otp(
     if user_exists:
         raise HTTPException(
             status_code=400,
-            detail="The user with this email already exists in the system.",
+            detail="อีเมลนี้ถูกใช้งานในระบบแล้ว",
         )
 
     otp_code = str(random.randint(100000, 999999))
     await redis_service.save_otp(email, otp_code)
 
     background_tasks.add_task(email_service.send_otp_email, email, otp_code)
-    return {"message": "OTP sent to your email"}
+    return {"message": "ส่งรหัส OTP ไปยังอีเมลของคุณเรียบร้อยแล้ว"}
 
 
 @router.post("/register")
@@ -88,13 +88,13 @@ async def register_user(
 ) -> Any:
     is_valid = await redis_service.verify_otp(email, otp_code)
     if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+        raise HTTPException(status_code=400, detail="รหัส OTP ไม่ถูกต้องหรือหมดอายุ")
     user_exists = await user_crud.get_user_by_email(db, email=email)
 
     if user_exists:
         raise HTTPException(
             status_code=400,
-            detail="The user with this email already exists in the system.",
+            detail="อีเมลนี้ถูกใช้งานในระบบแล้ว",
         )
 
     if not file.content_type.startswith("image/"):
@@ -141,20 +141,20 @@ async def refresh_token(
         if token_data is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
+                detail="สิทธิ์การเข้าถึงไม่ถูกต้อง หรือโทเค็นหมดอายุ",
             )
         user_id = int(token_data)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail="สิทธิ์การเข้าถึงไม่ถูกต้อง หรือโทเค็นหมดอายุ",
         )
 
     user = await user_crud.get_user_by_id(db, user_id=user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="ไม่พบข้อมูลผู้ใช้งานในระบบ",
         )
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -172,4 +172,4 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout():
-    return {"message": "Successfully logged out"}
+    return {"message": "ออกจากระบบสำเร็จ"}

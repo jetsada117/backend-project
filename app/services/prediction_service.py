@@ -7,6 +7,9 @@ import numpy as np
 import cv2
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
+import tensorflow as tf  # type: ignore
+from tensorflow import keras  # type: ignore
+from tensorflow.keras import layers  # type: ignore
 from tensorflow.keras.models import load_model  # type: ignore
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
@@ -20,6 +23,36 @@ from tensorflow.keras.applications.inception_v3 import (  # type: ignore
 from tensorflow.keras.applications.efficientnet import (  # type: ignore
     preprocess_input as efficientnet_preprocess,
 )
+
+
+class RandomShear(layers.Layer):
+    def __init__(self, shear_range=0.1, **kwargs):
+        super(RandomShear, self).__init__(**kwargs)
+        self.shear_range = shear_range
+
+    def call(self, images, training=None):
+        if not training:
+            return images
+        batch_size = tf.shape(images)[0]
+        height = tf.shape(images)[1]
+        width = tf.shape(images)[2]
+        shear = tf.random.uniform([batch_size], -self.shear_range, self.shear_range)
+        zeros = tf.zeros_like(shear)
+        ones = tf.ones_like(shear)
+        transforms = tf.stack(
+            [ones, shear, zeros, zeros, ones, zeros, zeros, zeros], axis=1
+        )
+        return tf.raw_ops.ImageProjectiveTransformV2(
+            images=images,
+            transforms=transforms,
+            output_shape=[height, width],
+            interpolation="BILINEAR",
+        )
+
+    def get_config(self):
+        config = super(RandomShear, self).get_config()
+        config.update({"shear_range": self.shear_range})
+        return config
 
 
 class MultiModelPredictor:
@@ -123,7 +156,7 @@ class MultiModelPredictor:
                 path = hf_hub_download(
                     repo_id=REPO_ID, filename=filename, token=settings.HF
                 )
-                return load_model(path)
+                return load_model(path, custom_objects={"RandomShear": RandomShear})
 
             self.age_model = get_model("age_finetuned_model_convnext.keras")
             self.age_regression_model = get_model(
@@ -191,6 +224,8 @@ class MultiModelPredictor:
             "inception": inception_preprocess(img_299.copy()),
             "efficientnet": efficientnet_preprocess(img_224.copy()),
             "default": img_224 / 255.0,
+            "raw_224": img_224,
+            "raw_299": img_299,
         }
 
     def _map_age_to_range(self, age: float) -> list:

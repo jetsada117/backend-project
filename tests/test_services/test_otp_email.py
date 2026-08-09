@@ -127,7 +127,7 @@ async def test_request_otp_endpoint_mocked(client: AsyncClient, mocker):
     response = await client.post("/api/v1/auth/request-otp", data={"email": "newuser@example.com"})
     
     assert response.status_code == 200
-    assert response.json()["message"] == "OTP sent to your email"
+    assert response.json()["message"] == "ส่งรหัส OTP ไปยังอีเมลของคุณเรียบร้อยแล้ว"
     
     mock_save_otp.assert_called_once()
     mock_send_email.assert_called_once()

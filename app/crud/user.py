@@ -48,7 +48,7 @@ async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
     new_id = result.lastrowid
     await db.commit()
 
-    return {"message": "Registration successful"}
+    return {"message": "ลงทะเบียนสำเร็จ"}
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
@@ -72,7 +72,7 @@ async def update_user_profile_image(
     await db.execute(sql, param)
     await db.commit()
 
-    return {"message": "Profile image updated successfully"}
+    return {"message": "อัปเดตรูปโปรไฟล์สำเร็จ"}
 
 
 async def update_user_name(
@@ -89,4 +89,4 @@ async def update_user_name(
     await db.execute(sql, param)
     await db.commit()
 
-    return {"message": "User name updated successfully"}
+    return {"message": "อัปเดตชื่อผู้ใช้งานสำเร็จ"}
