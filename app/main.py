@@ -23,7 +23,13 @@ async def lifespan(app: FastAPI):
     print("Shutting down FastAPI application...")
 
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 
 
 @app.middleware("http")
