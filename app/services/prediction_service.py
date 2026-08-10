@@ -195,7 +195,7 @@ class MultiModelPredictor:
     def get_preprocessed_images(self, image_bytes: bytes):
         """
         1. ทำ Face Alignment และ Crop เฉพาะใบหน้า
-            2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ โดยใช้ OpenCV
+        2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ โดยใช้ OpenCV
         """
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -270,11 +270,11 @@ class MultiModelPredictor:
         pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         if predicted_index == 0:
-            return [0, 0, 1] # ศีรษะล้าน
+            return [0, 0, 1]  # ศีรษะล้าน
         elif predicted_index == 1:
-            return [1, 0, 0] # ผมตรง
+            return [1, 0, 0]  # ผมตรง
         else:
-            return [0, 1, 0] # ผมหยักศก
+            return [0, 1, 0]  # ผมหยักศก
 
     def _predict_eyebrows(self, processed_image):
         pred_probs = self.eyebrows_model(processed_image, training=False).numpy()[0]

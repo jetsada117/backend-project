@@ -52,12 +52,42 @@ class FeatureEncoder:
         )
 
         self.age_mapping = {
+            # วัยเด็กเล็ก (2-6 ปี)
             "เด็กเล็ก": "วัยเด็กเล็ก",
+            "เด็กน้อย": "วัยเด็กเล็ก",
+            "ทารก": "วัยเด็กเล็ก",
+            "อนุบาล": "วัยเด็กเล็ก",
+            
+            # วัยเด็กโต (7-12 ปี)
             "เด็กโต": "วัยเด็กโต",
+            "ประถม": "วัยเด็กโต",
+            "เด็กประถม": "วัยเด็กโต",
+            
+            # วัยรุ่น (13-25 ปี)
             "วัยรุ่น": "วัยรุ่น",
+            "มัธยม": "วัยรุ่น",
+            "เด็กมัธยม": "วัยรุ่น",
+            "มหาลัย": "วัยรุ่น",
+            "มหาวิทยาลัย": "วัยรุ่น",
+            "วัยเรียน": "วัยรุ่น",
+            
+            # วัยผู้ใหญ่ตอนต้น (26-40 ปี)
             "ผู้ใหญ่ตอนต้น": "วัยผู้ใหญ่ตอนต้น",
+            "วัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
+            "คนวัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
+            
+            # วัยผู้ใหญ่ตอนกลาง (41-65 ปี)
             "ผู้ใหญ่ตอนกลาง": "วัยผู้ใหญ่ตอนกลาง",
+            "วัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
+            "คนวัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
+            
+            # วัยสูงอายุ (66 ปีขึ้นไป)
             "สูงอายุ": "วัยสูงอายุ",
+            "ผู้สูงอายุ": "วัยสูงอายุ",
+            "คนแก่": "วัยสูงอายุ",
+            "คนชรา": "วัยสูงอายุ",
+            "วัยชรา": "วัยสูงอายุ",
+            "ผู้เฒ่า": "วัยสูงอายุ"
         }
 
     def _encode_one_hot(self, target_value, category_list):
@@ -168,8 +198,7 @@ class FeatureEncoder:
         hair_style_end_idx = hair_style_start_idx + len(self.hair_style_categories)
 
         hair_style_vector = vector[hair_style_start_idx:hair_style_end_idx]
-        # Since ศีรษะล้าน is now in categories, it will be automatically added if its value is 1.
-        # Fallback for old behavior or if no hair style is matched at all
+
         if sum(hair_style_vector) == 0 and "ศีรษะล้าน" not in matched_features:
             matched_features.append("ศีรษะล้าน")
 
@@ -181,7 +210,7 @@ class FeatureEncoder:
         return df.T
 
     def combine_results_to_vector(self, pred_dict: dict) -> list:
-        """รวมผลจากโมเดลทุกตัวเป็น Vector เดียว (จบในที่เดียว)"""
+        """รวมผลจากโมเดลทุกตัวเป็น Vector เดียว"""
         keys = [
             "age_result",
             "gender_result",
@@ -214,14 +243,12 @@ class FeatureEncoder:
                     haircolor_text = self.hair_color_categories[
                         np.argmax(pred_dict["haircolor_result"])
                     ]
-                
-                # If hairstyle is ศีรษะล้าน, clear haircolor
+
                 if hairstyle_text == "ศีรษะล้าน":
                     haircolor_text = ""
 
             skin_text = self.skin_categories[np.argmax(pred_dict["skin_result"])]
 
-            # Multi-label features
             eyebrow_texts = [
                 cat
                 for i, cat in enumerate(self.eyebrow_categories)
