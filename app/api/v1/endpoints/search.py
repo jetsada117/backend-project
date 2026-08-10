@@ -28,11 +28,11 @@ async def calculate_similarity(
     vectors_list = []
 
     for item in db_predictions:
-        # ใช้ Vector ที่บันทึกไว้ใน DB หากมี (Optimization)
+
         if item.prediction_vector:
             db_vector = item.prediction_vector
         else:
-            # Fallback สำหรับข้อมูลเก่าที่ยังไม่มี vector ใน DB
+
             db_text_features = (
                 f"{item.age_result or ''} "
                 f"{item.gender_result or ''} "
@@ -44,10 +44,8 @@ async def calculate_similarity(
             ).strip()
             db_vector = encoder.text_to_vector(db_text_features).tolist()
 
-        # Migrate old 25-dimension vectors to 26-dimension
         if len(db_vector) == 25 and len(scorer.expanded_weights) == 26:
-            # For old vectors, index 11 and 12 are hair style (ผมตรง, ผมหยักศก).
-            # If both are 0, it means bald, so index 13 (ศีรษะล้าน) should be 1.
+
             hair_style = db_vector[11:13]
             is_bald = 1 if sum(hair_style) == 0 else 0
             db_vector.insert(13, is_bald)
@@ -59,7 +57,6 @@ async def calculate_similarity(
     if not vectors_list:
         return []
 
-    # แปลงเป็น NumPy Matrix (N, 25)
     import numpy as np
 
     db_matrix = np.array(vectors_list)
@@ -68,7 +65,7 @@ async def calculate_similarity(
 
     results = []
     for i, item in enumerate(valid_items):
-        # เตรียมข้อมูล features สำหรับแสดงผล (อิงจากผลลัพธ์ที่เป็นข้อความ)
+
         db_text_features_for_display = (
             f"{item.age_result or ''} "
             f"{item.gender_result or ''} "

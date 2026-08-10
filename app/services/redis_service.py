@@ -1,7 +1,6 @@
 import redis.asyncio as redis
 from app.core.config import settings
 
-# เชื่อมต่อแบบ Async เพื่อไม่ให้ Block การทำงานของ FastAPI
 redis_client = redis.from_url(settings.REDIS_URL, decode_responses=True)
 
 

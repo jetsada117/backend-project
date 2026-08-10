@@ -25,7 +25,6 @@ async def predict_item_image(
     file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    # จำกัดขนาดไฟล์ 5MB
     MAX_FILE_SIZE = 5 * 1024 * 1024
     if file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
@@ -35,7 +34,6 @@ async def predict_item_image(
 
     contents = await file.read()
 
-    # บันทึกเวลาเริ่มต้นการรันโมเดลทำนายผล
     ml_start_time = time.perf_counter()
     try:
         predictions = await predictor_service.predict_all(contents)
@@ -84,7 +82,6 @@ async def save_item_prediction(
     if file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
 
-    # --- ส่วนที่ 1: ใช้ Helper แปลง Array เป็นข้อความภาษาไทย ---
     try:
         thai_desc = encoder.get_thai_description_dict(predictions_dict)
     except ValueError as e:
@@ -106,11 +103,9 @@ async def save_item_prediction(
             status_code=500, detail=f"เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ: {str(e)}"
         )
 
-    # --- ส่วนที่ 2: ใช้ Helper คำนวณ Vector 25 มิติ ---
     full_vector = encoder.combine_results_to_vector(predictions_dict)
     full_vector_list = [int(x) for x in full_vector]
 
-    # --- ส่วนที่ 3: ส่งค่าเข้า Schema ---
     prediction_data = prediction_schema.PredictionCreate(
         image_filename=new_file_name,
         image_url=image_url,

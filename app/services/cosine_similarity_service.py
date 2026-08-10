@@ -6,7 +6,7 @@ class FaceSimilarityScorer:
         """
         กำหนดค่าเริ่มต้นของน้ำหนักและขนาดของแต่ละกลุ่ม (Features)
         """
-        # 1. กำหนดค่าน้ำหนัก Default (ถ้าไม่มีการส่งค่าใหม่เข้ามาตอนสร้าง Object)
+
         self.weight_config = weight_config or {
             "age": 0.15,  # ช่วงวัย
             "gender": 0.40,  # เพศ
@@ -17,7 +17,6 @@ class FaceSimilarityScorer:
             "beard": 0.05,  # หนวดเครา
         }
 
-        # 2. กำหนดขนาดของคลาส (One-Hot length) ของแต่ละ Feature
         self.group_sizes = group_sizes or [
             6,  # Age (6 ช่วงวัย)
             2,  # Gender (ชาย, หญิง)
@@ -32,7 +31,7 @@ class FaceSimilarityScorer:
 
     def _build_expanded_weights(self):
         """
-        ฟังก์ชันภายใน (Private Method) สำหรับขยายค่าน้ำหนักตามจำนวนคลาส
+        ฟังก์ชันสำหรับขยายค่าน้ำหนักตามจำนวนคลาส
         """
         ordered_weights = [
             self.weight_config["age"],
@@ -87,29 +86,23 @@ class FaceSimilarityScorer:
         """
         w = self.expanded_weights
 
-        # 1. ทำ Active Mask (Dynamic Weight) ตาม Input Vector A
         active_mask = vector_a != 0
         dynamic_w = w * active_mask
 
         if np.sum(dynamic_w) == 0:
             return np.zeros(matrix_b.shape[0])
 
-        # 2. Apply Weight ให้ทั้ง Vector A และ Matrix B
         A_w = vector_a * dynamic_w
         B_w = matrix_b * dynamic_w
 
-        # 3. คำนวณ Dot Product (Numerator)
         numerator = np.dot(B_w, A_w)
 
-        # 4. คำนวณ Norm (Denominator)
         norm_a = np.sqrt(np.sum(A_w**2))
         norm_b = np.sqrt(np.sum(B_w**2, axis=1))
 
-        # กันการหารด้วยศูนย์
         denominator = norm_a * norm_b
         denominator[denominator == 0] = 1e-9
 
-        # 5. คำนวณ Similarity Score ทั้งหมด
         return numerator / denominator
 
 
