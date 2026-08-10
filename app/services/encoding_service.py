@@ -21,7 +21,7 @@ class FeatureEncoder:
             "ผมบลอนด์",
             "ผมดำ",
         ]
-        self.hair_style_categories = ["ผมตรง", "ผมหยักศก"]
+        self.hair_style_categories = ["ผมตรง", "ผมหยักศก", "ศีรษะล้าน"]
         self.eyebrow_categories = [
             "คิ้วโก่ง",
             "คิ้วหนา",

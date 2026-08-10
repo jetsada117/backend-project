@@ -17,16 +17,13 @@ async def calculate_similarity(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
-    # 1. แปลง Input Text เป็น Vector (NumPy Array)
     current_user_vector = encoder.text_to_vector(description)
 
-    # 2. ดึงข้อมูลจาก DB
     db_predictions = await prediction_crud.get_prediction(db)
 
     if not db_predictions:
         return []
 
-    # 3. เตรียม Matrix จากข้อมูลใน DB
     valid_items = []
     vectors_list = []
 
@@ -59,10 +56,8 @@ async def calculate_similarity(
 
     db_matrix = np.array(vectors_list)
 
-    # 4. คำนวณ Similarity ทุกแถวพร้อมกันด้วย NumPy Matrix Operations
     scores = scorer.calculate_similarity_matrix(current_user_vector, db_matrix)
 
-    # 5. รวบรวมผลลัพธ์
     results = []
     for i, item in enumerate(valid_items):
         # เตรียมข้อมูล features สำหรับแสดงผล (อิงจากผลลัพธ์ที่เป็นข้อความ)
@@ -91,7 +86,6 @@ async def calculate_similarity(
             }
         )
 
-    # 6. เรียงลำดับและคืนค่า
     results.sort(key=lambda x: x["similarity_score"], reverse=True)
 
     return results[:limit]
