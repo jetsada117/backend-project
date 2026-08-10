@@ -13,7 +13,7 @@ def test_text_to_vector_basic():
 
 def test_vector_to_text():
     # Create a vector for a young female with black hair
-    vector = [0] * 25
+    vector = [0] * 26
     vector[2] = 1 # วัยรุ่น
     vector[6] = 1 # หญิง
     vector[10] = 1 # ผมดำ

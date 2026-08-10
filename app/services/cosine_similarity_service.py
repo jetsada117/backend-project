@@ -22,7 +22,7 @@ class FaceSimilarityScorer:
             6,  # Age (6 ช่วงวัย)
             2,  # Gender (ชาย, หญิง)
             3,  # Hair Color (ดำ, น้ำตาล, บลอนด์)
-            2,  # Hair Style (ตรง, หยักศก)
+            3,  # Hair Style (ตรง, หยักศก, ศีรษะล้าน)
             4,  # Eyebrow (โก่ง, หนา, ตรง, บาง)
             4,  # Skin (ขาว, คล้ำ)
             4,  # Beard (4 แบบ)

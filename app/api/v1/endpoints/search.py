@@ -44,6 +44,14 @@ async def calculate_similarity(
             ).strip()
             db_vector = encoder.text_to_vector(db_text_features).tolist()
 
+        # Migrate old 25-dimension vectors to 26-dimension
+        if len(db_vector) == 25 and len(scorer.expanded_weights) == 26:
+            # For old vectors, index 11 and 12 are hair style (ผมตรง, ผมหยักศก).
+            # If both are 0, it means bald, so index 13 (ศีรษะล้าน) should be 1.
+            hair_style = db_vector[11:13]
+            is_bald = 1 if sum(hair_style) == 0 else 0
+            db_vector.insert(13, is_bald)
+
         if len(db_vector) == len(scorer.expanded_weights):
             valid_items.append(item)
             vectors_list.append(db_vector)

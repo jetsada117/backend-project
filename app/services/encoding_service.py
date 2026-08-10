@@ -21,7 +21,7 @@ class FeatureEncoder:
             "ผมบลอนด์",
             "ผมดำ",
         ]
-        self.hair_style_categories = ["ผมตรง", "ผมหยักศก"]
+        self.hair_style_categories = ["ผมตรง", "ผมหยักศก", "ศีรษะล้าน"]
         self.eyebrow_categories = [
             "คิ้วโก่ง",
             "คิ้วหนา",
@@ -41,7 +41,6 @@ class FeatureEncoder:
             "จอน",
         ]
 
-        # รวมชื่อ Feature ทั้งหมดตามลำดับ
         self.feature_names = (
             self.age_categories
             + self.gender_categories
@@ -91,6 +90,9 @@ class FeatureEncoder:
         for category in self.hair_style_categories:
             if category in text or category.replace("ผม", "") in text:
                 extracted_features["hair_style"] = category
+
+        if "ศีรษะล้าน" in text:
+            extracted_features["hair_style"] = "ศีรษะล้าน"
 
         for category in self.eyebrow_categories:
             if category in text:
@@ -166,7 +168,9 @@ class FeatureEncoder:
         hair_style_end_idx = hair_style_start_idx + len(self.hair_style_categories)
 
         hair_style_vector = vector[hair_style_start_idx:hair_style_end_idx]
-        if sum(hair_style_vector) == 0:
+        # Since ศีรษะล้าน is now in categories, it will be automatically added if its value is 1.
+        # Fallback for old behavior or if no hair style is matched at all
+        if sum(hair_style_vector) == 0 and "ศีรษะล้าน" not in matched_features:
             matched_features.append("ศีรษะล้าน")
 
         return matched_features
@@ -195,7 +199,6 @@ class FeatureEncoder:
     def get_thai_description_dict(self, pred_dict: dict) -> dict:
         """แปลงผลจากโมเดล (Array) เป็นข้อความภาษาไทยสำหรับแต่ละฟีเจอร์"""
         try:
-            # ใช้ np.argmax เพื่อหา Index ที่มีความจุมากที่สุด
             age_text = self.age_categories[np.argmax(pred_dict["age_result"])]
             gender_text = self.gender_categories[np.argmax(pred_dict["gender_result"])]
 
@@ -206,9 +209,15 @@ class FeatureEncoder:
                 hairstyle_text = self.hair_style_categories[
                     np.argmax(pred_dict["hairstyle_result"])
                 ]
-                haircolor_text = self.hair_color_categories[
-                    np.argmax(pred_dict["haircolor_result"])
-                ]
+                haircolor_text = ""
+                if sum(pred_dict["haircolor_result"]) > 0:
+                    haircolor_text = self.hair_color_categories[
+                        np.argmax(pred_dict["haircolor_result"])
+                    ]
+                
+                # If hairstyle is ศีรษะล้าน, clear haircolor
+                if hairstyle_text == "ศีรษะล้าน":
+                    haircolor_text = ""
 
             skin_text = self.skin_categories[np.argmax(pred_dict["skin_result"])]
 
