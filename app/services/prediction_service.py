@@ -1,25 +1,22 @@
 # app/services/prediction_service.py
-import io
 import os
 import asyncio
 import threading
 import numpy as np
 import cv2
-from pathlib import Path
 import time
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.models import load_model
+from tensorflow.keras import layers  # type: ignore
+from tensorflow.keras.models import load_model  # type: ignore
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
 
-from tensorflow.keras.applications.convnext import (
+from tensorflow.keras.applications.convnext import (  # type: ignore
     preprocess_input as convnext_preprocess,
 )
-from tensorflow.keras.applications.inception_v3 import (
+from tensorflow.keras.applications.inception_v3 import (  # type: ignore
     preprocess_input as inception_preprocess,
 )
 
@@ -232,9 +229,7 @@ class MultiModelPredictor:
         if img_raw is None:
             raise ValueError("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาตรวจสอบไฟล์ที่อัปโหลด")
 
-        # ปิดการทำงาน Face Alignment และ Crop ชั่วคราวเพื่อทดสอบความแม่นยำ
-        # img_processed = self._align_and_crop_face(img_raw)
-        img_processed = img_raw
+        img_processed = self._align_and_crop_face(img_raw)
 
         if img_processed is None or img_processed.size == 0:
             raise ValueError("ไม่พบใบหน้าในรูปภาพ กรุณาอัปโหลดรูปที่เห็นใบหน้าชัดเจน")
