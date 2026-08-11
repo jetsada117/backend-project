@@ -22,9 +22,6 @@ from tensorflow.keras.applications.convnext import (
 from tensorflow.keras.applications.inception_v3 import (
     preprocess_input as inception_preprocess,
 )
-from tensorflow.keras.applications.efficientnet import (
-    preprocess_input as efficientnet_preprocess,
-)
 
 
 class RandomShear(layers.Layer):
@@ -178,10 +175,14 @@ class MultiModelPredictor:
                             filename=filename,
                             token=settings.HF,
                         )
-                        return load_model(path, custom_objects={"RandomShear": RandomShear})
+                        return load_model(
+                            path, custom_objects={"RandomShear": RandomShear}
+                        )
                     except Exception as e:
                         if attempt < retries - 1:
-                            print(f"[WARNING] Download failed for {filename}. Retrying in {delay}s...")
+                            print(
+                                f"[WARNING] Download failed for {filename}. Retrying in {delay}s..."
+                            )
                             time.sleep(delay)
                         else:
                             print(f"[ERROR] Exhausted retries for {filename}.")
@@ -365,7 +366,7 @@ class MultiModelPredictor:
             hairstyle_res = future_hairstyle.result()
             # Hair color is dependent on hairstyle
             haircolor_res = run_haircolor(hairstyle_res)
-            
+
             res_age = future_age.result()
             res_gender = future_gender.result()
             res_eyebrows = future_eyebrows.result()
