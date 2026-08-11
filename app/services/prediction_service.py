@@ -178,7 +178,7 @@ class MultiModelPredictor:
                 self.age_model(dummy_input_224, training=False)
                 self.age_regression_model(dummy_input_224, training=False)
                 self.gender_model(dummy_input_224, training=False)
-                self.haircolor_model(dummy_input_224, training=False)
+                self.haircolor_model(dummy_input_299, training=False)
                 self.hairstyle_model(dummy_input_299, training=False)
                 self.eyebrows_model(dummy_input_224, training=False)
                 self.skin_model(dummy_input_299, training=False)
