@@ -232,7 +232,9 @@ class MultiModelPredictor:
         if img_raw is None:
             raise ValueError("ไม่สามารถอ่านไฟล์รูปภาพได้ กรุณาตรวจสอบไฟล์ที่อัปโหลด")
 
-        img_processed = self._align_and_crop_face(img_raw)
+        # ปิดการทำงาน Face Alignment และ Crop ชั่วคราวเพื่อทดสอบความแม่นยำ
+        # img_processed = self._align_and_crop_face(img_raw)
+        img_processed = img_raw
 
         if img_processed is None or img_processed.size == 0:
             raise ValueError("ไม่พบใบหน้าในรูปภาพ กรุณาอัปโหลดรูปที่เห็นใบหน้าชัดเจน")
@@ -363,7 +365,6 @@ class MultiModelPredictor:
             future_beard = pool.submit(run_beard)
 
             hairstyle_res = future_hairstyle.result()
-            # Hair color is dependent on hairstyle
             haircolor_res = run_haircolor(hairstyle_res)
 
             res_age = future_age.result()
