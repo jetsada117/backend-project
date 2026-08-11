@@ -55,8 +55,6 @@ class RandomShear(layers.Layer):
         return config
 
 
-# Monkey-patch BatchNormalization to ignore Keras 2 'renorm' kwargs removed in Keras 3.
-# This is needed because custom_objects does not propagate into nested sub-models (e.g. InceptionV3).
 _OriginalBatchNormalization = layers.BatchNormalization
 _original_bn_init = _OriginalBatchNormalization.__init__
 
@@ -172,7 +170,6 @@ class MultiModelPredictor:
                     repo_id=REPO_ID,
                     filename=filename,
                     token=settings.HF,
-                    force_download=True,
                 )
 
                 return load_model(path, custom_objects={"RandomShear": RandomShear})
