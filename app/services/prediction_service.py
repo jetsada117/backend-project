@@ -55,22 +55,6 @@ class RandomShear(layers.Layer):
         return config
 
 
-# Monkey-patch BatchNormalization to ignore Keras 2 'renorm' kwargs removed in Keras 3.
-# This is needed because custom_objects does not propagate into nested sub-models (e.g. InceptionV3).
-_OriginalBatchNormalization = layers.BatchNormalization
-_original_bn_init = _OriginalBatchNormalization.__init__
-
-
-def _patched_bn_init(self, *args, **kwargs):
-    kwargs.pop("renorm", None)
-    kwargs.pop("renorm_clipping", None)
-    kwargs.pop("renorm_momentum", None)
-    _original_bn_init(self, *args, **kwargs)
-
-
-_OriginalBatchNormalization.__init__ = _patched_bn_init
-
-
 class MultiModelPredictor:
     def __init__(self):
         self.age_model = None
