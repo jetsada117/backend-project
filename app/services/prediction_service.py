@@ -79,7 +79,7 @@ class MultiModelPredictor:
 
         self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
 
-        self._lock = threading.Lock().
+        self._lock = threading.Lock()
 
     def _align_and_crop_face(self, image_np):
         """
