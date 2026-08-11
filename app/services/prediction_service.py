@@ -159,7 +159,6 @@ class MultiModelPredictor:
             return
 
         with self._lock:
-            # Double-checked locking ป้องกันโหลดซ้ำซ้อนในสภาวะ concurrent
             if self.is_loaded:
                 return
 
@@ -332,7 +331,7 @@ class MultiModelPredictor:
             if hairstyle_res == [0, 0, 1] or hairstyle_res == [0, 0]:
                 num_classes = self.haircolor_model.output_shape[-1]
                 return [0] * num_classes
-            inp = convnext_preprocess(raw_224.copy())
+            inp = inception_preprocess(raw_299.copy())
             return self._predict_haircolor(inp)
 
         def run_age_regression():
