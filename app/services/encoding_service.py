@@ -17,7 +17,7 @@ class FeatureEncoder:
             "ชาย",
         ]
         self.hair_color_categories = [
-            "ผมน้ำตาล",
+            "ผมเทา",
             "ผมบลอนด์",
             "ผมดำ",
         ]
