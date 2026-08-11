@@ -79,10 +79,7 @@ class MultiModelPredictor:
 
         self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
 
-        self._lock = threading.Lock()
-
-        # Initialize OpenCV Face and Eye detectors
-        # Removed from __init__ for thread-safety. Will instantiate per-request.
+        self._lock = threading.Lock().
 
     def _align_and_crop_face(self, image_np):
         """
@@ -125,6 +122,7 @@ class MultiModelPredictor:
                 float((eye_right[0] + eye_left[0]) / 2),
                 float((eye_right[1] + eye_left[1]) / 2),
             )
+
             M = cv2.getRotationMatrix2D(eye_center, float(angle), 1.0)
             image_np = cv2.warpAffine(
                 image_np,
@@ -140,8 +138,8 @@ class MultiModelPredictor:
                     0
                 ]
 
-        pad_w = int(w * 0.2)
-        pad_h = int(h * 0.2)
+        pad_w = int(w * 0.6)
+        pad_h = int(h * 0.6)
 
         y1 = max(0, y - pad_h)
         y2 = min(image_np.shape[0], y + h + pad_h)
