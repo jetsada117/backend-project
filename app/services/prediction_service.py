@@ -188,7 +188,7 @@ class MultiModelPredictor:
             )
             self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
             self.haircolor_model = get_model(
-                "haircolor/haircolor_fine_model_inception_op.keras"
+                "haircolor/haircolor_fine_model_convnext_op.keras"
             )
             self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
             self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
@@ -203,7 +203,7 @@ class MultiModelPredictor:
                 self.age_model(dummy_input_224, training=False)
                 self.age_regression_model(dummy_input_224, training=False)
                 self.gender_model(dummy_input_224, training=False)
-                self.haircolor_model(dummy_input_299, training=False)
+                self.haircolor_model(dummy_input_224, training=False)
                 self.hairstyle_model(dummy_input_299, training=False)
                 self.eyebrows_model(dummy_input_224, training=False)
                 self.skin_model(dummy_input_299, training=False)
