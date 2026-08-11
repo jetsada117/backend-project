@@ -6,21 +6,23 @@ import threading
 import numpy as np
 import cv2
 from pathlib import Path
+import time
+import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-import tensorflow as tf  # type: ignore
-from tensorflow import keras  # type: ignore
-from tensorflow.keras import layers  # type: ignore
-from tensorflow.keras.models import load_model  # type: ignore
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.models import load_model
 from huggingface_hub import hf_hub_download
 from app.core.config import settings
 
-from tensorflow.keras.applications.convnext import (  # type: ignore
+from tensorflow.keras.applications.convnext import (
     preprocess_input as convnext_preprocess,
 )
-from tensorflow.keras.applications.inception_v3 import (  # type: ignore
+from tensorflow.keras.applications.inception_v3 import (
     preprocess_input as inception_preprocess,
 )
-from tensorflow.keras.applications.efficientnet import (  # type: ignore
+from tensorflow.keras.applications.efficientnet import (
     preprocess_input as efficientnet_preprocess,
 )
 
@@ -86,19 +88,22 @@ class MultiModelPredictor:
         self._lock = threading.Lock()
 
         # Initialize OpenCV Face and Eye detectors
-        self.face_cascade = cv2.CascadeClassifier(
-            os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
-        )
-        self.eye_cascade = cv2.CascadeClassifier(
-            os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
-        )
+        # Removed from __init__ for thread-safety. Will instantiate per-request.
 
     def _align_and_crop_face(self, image_np):
         """
         ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า โดยใช้ OpenCV Haar Cascades
         """
+        # Create thread-safe instances per-request
+        face_cascade = cv2.CascadeClassifier(
+            os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
+        )
+        eye_cascade = cv2.CascadeClassifier(
+            os.path.join(cv2.data.haarcascades, "haarcascade_eye.xml")
+        )
+
         gray = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
-        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
         if len(faces) == 0:
             return image_np
@@ -106,7 +111,7 @@ class MultiModelPredictor:
         x, y, w, h = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)[0]
         roi_gray = gray[y : y + h, x : x + w]
 
-        eyes = self.eye_cascade.detectMultiScale(roi_gray)
+        eyes = eye_cascade.detectMultiScale(roi_gray)
 
         if len(eyes) >= 2:
             eyes = sorted(eyes, key=lambda e: e[1])[:2]
@@ -135,7 +140,7 @@ class MultiModelPredictor:
             )
 
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
-            faces_rot = self.face_cascade.detectMultiScale(gray_rot, 1.3, 5)
+            faces_rot = face_cascade.detectMultiScale(gray_rot, 1.3, 5)
             if len(faces_rot) > 0:
                 x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[
                     0
@@ -164,15 +169,23 @@ class MultiModelPredictor:
             REPO_ID = "Jetsada117/models_project"
             print(f"Downloading and loading models from Hugging Face Hub: {REPO_ID}")
 
-            def get_model(filename):
+            def get_model(filename, retries=3, delay=2):
                 filename = filename.lstrip("/")
-                path = hf_hub_download(
-                    repo_id=REPO_ID,
-                    filename=filename,
-                    token=settings.HF,
-                )
-
-                return load_model(path, custom_objects={"RandomShear": RandomShear})
+                for attempt in range(retries):
+                    try:
+                        path = hf_hub_download(
+                            repo_id=REPO_ID,
+                            filename=filename,
+                            token=settings.HF,
+                        )
+                        return load_model(path, custom_objects={"RandomShear": RandomShear})
+                    except Exception as e:
+                        if attempt < retries - 1:
+                            print(f"[WARNING] Download failed for {filename}. Retrying in {delay}s...")
+                            time.sleep(delay)
+                        else:
+                            print(f"[ERROR] Exhausted retries for {filename}.")
+                            raise e
 
             self.age_model = get_model("age_finetuned_model_convnext.keras")
             self.age_regression_model = get_model(
@@ -237,10 +250,6 @@ class MultiModelPredictor:
         img_299 = np.expand_dims(img_299, axis=0)
 
         return {
-            "convnext": convnext_preprocess(img_224.copy()),
-            "inception": inception_preprocess(img_299.copy()),
-            "efficientnet": efficientnet_preprocess(img_224.copy()),
-            "default": img_224 / 255.0,
             "raw_224": img_224,
             "raw_299": img_299,
         }
@@ -309,21 +318,59 @@ class MultiModelPredictor:
 
     def _run_predictions(self, preprocessed):
         """
-        รันทุกโมเดลทีละตัวแบบเรียงลำดับ (Sequential)
-        ฟังก์ชันนี้จะทำงานอยู่บน Worker Thread เดียว ไม่สร้างความภาระสลับเธรด
+        รันทุกโมเดลแบบคู่ขนาน (Parallel) เพื่อลด Response Time
         """
-        hairstyle_res = self._predict_hairstyle(preprocessed["inception"])
-        if hairstyle_res == [0, 0, 1] or hairstyle_res == [0, 0]:
-            num_haircolor_classes = self.haircolor_model.output_shape[-1]
-            haircolor_res = [0] * num_haircolor_classes
-        else:
-            haircolor_res = self._predict_haircolor(preprocessed["convnext"])
+        raw_224 = preprocessed["raw_224"]
+        raw_299 = preprocessed["raw_299"]
 
-        res_age = self._predict_age_regression(preprocessed["convnext"])
-        res_gender = self._predict_gender(preprocessed["convnext"])
-        res_eyebrows = self._predict_eyebrows(preprocessed["convnext"])
-        res_skin = self._predict_skin(preprocessed["inception"])
-        res_beard = self._predict_beard(preprocessed["convnext"])
+        def run_hairstyle():
+            inp = inception_preprocess(raw_299.copy())
+            return self._predict_hairstyle(inp)
+
+        def run_haircolor(hairstyle_res):
+            if hairstyle_res == [0, 0, 1] or hairstyle_res == [0, 0]:
+                num_classes = self.haircolor_model.output_shape[-1]
+                return [0] * num_classes
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_haircolor(inp)
+
+        def run_age_regression():
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_age_regression(inp)
+
+        def run_gender():
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_gender(inp)
+
+        def run_eyebrows():
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_eyebrows(inp)
+
+        def run_skin():
+            inp = inception_preprocess(raw_299.copy())
+            return self._predict_skin(inp)
+
+        def run_beard():
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_beard(inp)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+            future_hairstyle = pool.submit(run_hairstyle)
+            future_age = pool.submit(run_age_regression)
+            future_gender = pool.submit(run_gender)
+            future_eyebrows = pool.submit(run_eyebrows)
+            future_skin = pool.submit(run_skin)
+            future_beard = pool.submit(run_beard)
+
+            hairstyle_res = future_hairstyle.result()
+            # Hair color is dependent on hairstyle
+            haircolor_res = run_haircolor(hairstyle_res)
+            
+            res_age = future_age.result()
+            res_gender = future_gender.result()
+            res_eyebrows = future_eyebrows.result()
+            res_skin = future_skin.result()
+            res_beard = future_beard.result()
 
         return {
             "age_result": res_age,
