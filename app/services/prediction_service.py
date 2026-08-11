@@ -153,8 +153,12 @@ class MultiModelPredictor:
             def get_model(filename):
                 filename = filename.lstrip("/")
                 path = hf_hub_download(
-                    repo_id=REPO_ID, filename=filename, token=settings.HF
+                    repo_id=REPO_ID,
+                    filename=filename,
+                    token=settings.HF,
+                    force_download=True,
                 )
+
                 return load_model(path, custom_objects={"RandomShear": RandomShear})
 
             self.age_model = get_model("age_finetuned_model_convnext.keras")
