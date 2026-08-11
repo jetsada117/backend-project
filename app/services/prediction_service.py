@@ -67,10 +67,8 @@ class MultiModelPredictor:
         self.beard_model = None
         self.is_loaded = False
 
-        # สร้าง ThreadPoolExecutor เพียงครั้งเดียวเพื่อใช้ซ้ำ (Singleton Pattern)
         self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
 
-        # Lock สำหรับโหลดโมเดลเพื่อป้องกัน Race Condition
         self._lock = threading.Lock()
 
         # Initialize OpenCV Face and Eye detectors
@@ -164,13 +162,14 @@ class MultiModelPredictor:
                 "age_convnext_finetuned_regression_model.keras"
             )
             self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
-            self.haircolor_model = get_model("haircolor_best_model_convnext.keras")
+            self.haircolor_model = get_model(
+                "haircolor/haircolor_fine_model_inception_op.keras"
+            )
             self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
             self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
             self.skin_model = get_model("skin_best_model_inception.keras")
             self.beard_model = get_model("beard_best_model_convnext.keras")
 
-            # --- ส่วนของ Model Warm-up ---
             print("[INFO] Warming up models with dummy data...")
             try:
                 dummy_input_224 = np.zeros((1, 224, 224, 3), dtype=np.float32)
