@@ -55,6 +55,16 @@ class RandomShear(layers.Layer):
         return config
 
 
+class CustomBatchNormalization(layers.BatchNormalization):
+    """Wrapper to strip Keras 2 'renorm' kwargs removed in Keras 3."""
+
+    def __init__(self, **kwargs):
+        kwargs.pop("renorm", None)
+        kwargs.pop("renorm_clipping", None)
+        kwargs.pop("renorm_momentum", None)
+        super().__init__(**kwargs)
+
+
 class MultiModelPredictor:
     def __init__(self):
         self.age_model = None
@@ -155,7 +165,10 @@ class MultiModelPredictor:
                 path = hf_hub_download(
                     repo_id=REPO_ID, filename=filename, token=settings.HF
                 )
-                return load_model(path, custom_objects={"RandomShear": RandomShear})
+                return load_model(path, custom_objects={
+                    "RandomShear": RandomShear,
+                    "BatchNormalization": CustomBatchNormalization,
+                })
 
             self.age_model = get_model("age_finetuned_model_convnext.keras")
             self.age_regression_model = get_model(
