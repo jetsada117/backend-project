@@ -188,7 +188,7 @@ class MultiModelPredictor:
             )
             self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
             self.haircolor_model = get_model(
-                "haircolor/haircolor_fine_model_convnext_op.keras"
+                "haircolor/haircolor_fine_model_convnext.keras"
             )
             self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
             self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
