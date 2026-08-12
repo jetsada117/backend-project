@@ -11,6 +11,7 @@ from scalar_fastapi import get_scalar_api_reference
 from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.core.security_middleware import SecurityMiddleware
 
 logger = logging.getLogger("uvicorn")
 
@@ -30,6 +31,10 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
+
+# Security middleware (outermost — runs first)
+app.add_middleware(SecurityMiddleware)
 
 
 @app.middleware("http")
