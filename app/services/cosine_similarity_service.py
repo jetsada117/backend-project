@@ -81,8 +81,8 @@ class FaceSimilarityScorer:
     ) -> np.ndarray:
         """
         คำนวณ Weighted Cosine Similarity ระหว่าง 1 Vector กับ Matrix ของ DB พร้อมกันทั้งหมด
-        vector_a: shape (25,)
-        matrix_b: shape (N, 25)
+        vector_a: shape (26,)
+        matrix_b: shape (N, 26)
         """
         w = self.expanded_weights
 
