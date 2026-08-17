@@ -189,12 +189,12 @@ class RateLimitStore:
     def ban_ip(self, ip: str):
         """แบน IP (ยกเว้น Private/Proxy IP)"""
         if is_private_ip(ip):
-            logger.info(f"ℹ️ Skipped banning private/proxy IP: {ip}")
+            logger.info(f"Skipped banning private/proxy IP: {ip}")
             return
 
         self.banned_ips[ip] = time.time() + BAN_DURATION_SECONDS
         logger.warning(
-            f"🚫 BANNED IP: {ip} for {BAN_DURATION_SECONDS}s "
+            f"BANNED IP: {ip} for {BAN_DURATION_SECONDS}s "
             f"(suspicious requests: {self.suspicious_counts[ip]})"
         )
 
@@ -273,7 +273,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # ---- ขั้นที่ 1: ตรวจ ban list ----
         if _store.is_banned(client_ip):
             logger.warning(
-                f"⛔ BLOCKED banned IP: {client_ip} | Path: {path}"
+                f"BLOCKED banned IP: {client_ip} | Path: {path}"
             )
             return JSONResponse(
                 status_code=403,
@@ -284,9 +284,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if is_suspicious_path(path):
             was_banned = _store.record_suspicious(client_ip)
             logger.warning(
-                f"🔍 Suspicious request from {client_ip} | Path: {path} | "
+                f"Suspicious request from {client_ip} | Path: {path} | "
                 f"Count: {_store.suspicious_counts[client_ip]}/{SUSPICIOUS_THRESHOLD}"
-                f"{' → BANNED!' if was_banned else ''}"
+                f"{' -> BANNED!' if was_banned else ''}"
             )
             return JSONResponse(
                 status_code=403,
@@ -296,7 +296,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # ---- ขั้นที่ 3: ตรวจ rate limit ----
         if _store.check_rate_limit(client_ip):
             logger.warning(
-                f"⏱️ Rate limit exceeded for IP: {client_ip} | Path: {path}"
+                f"Rate limit exceeded for IP: {client_ip} | Path: {path}"
             )
             return JSONResponse(
                 status_code=429,
