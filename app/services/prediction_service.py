@@ -294,9 +294,9 @@ class MultiModelPredictor:
         if predicted_index == 0:
             return [0, 0, 1]  # ศีรษะล้าน
         elif predicted_index == 1:
-            return [1, 0, 0]  # ผมตรง
-        else:
             return [0, 1, 0]  # ผมหยักศก
+        else:
+            return [1, 0, 0]  # ผมตรง
 
     def _predict_eyebrows(self, processed_image):
         pred_probs = self.eyebrows_model(processed_image, training=False).numpy()[0]
