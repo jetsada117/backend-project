@@ -11,7 +11,7 @@ from scalar_fastapi import get_scalar_api_reference
 from app.services.prediction_service import predictor_service
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.core.security_middleware import SecurityMiddleware
+from app.core.security_middleware import SecurityMiddleware, get_client_ip
 
 logger = logging.getLogger("uvicorn")
 
@@ -44,9 +44,10 @@ async def catch_exceptions_middleware(request: Request, call_next):
     try:
         response = await call_next(request)
         process_time = time.perf_counter() - start_time
+        client_ip = get_client_ip(request)
 
         logger.info(
-            f"[{request_time}] IP: {request.client.host} | Method: {request.method} | "
+            f"[{request_time}] IP: {client_ip} | Method: {request.method} | "
             f"Path: {request.url.path} | Status: {response.status_code} | "
             f"Taken: {process_time:.4f}s"
         )

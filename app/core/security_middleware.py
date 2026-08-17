@@ -10,6 +10,7 @@ Security Middleware สำหรับป้องกัน vulnerability scanni
 import time
 import logging
 import re
+import ipaddress
 from collections import defaultdict
 from typing import Set
 
@@ -18,6 +19,44 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("uvicorn")
+
+
+# ============================================================
+# Helper functions for IP detection
+# ============================================================
+
+def is_private_ip(ip_str: str) -> bool:
+    """ตรวจว่า IP เป็น Private IP, Loopback หรือ Local Proxy หรือไม่"""
+    try:
+        ip = ipaddress.ip_address(ip_str.strip())
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return False
+
+
+def get_client_ip(request: Request) -> str:
+    """
+    ดึง IP จริงของ Client จาก Headers (รองรับ Reverse Proxy เช่น Hugging Face, Cloudflare)
+    """
+    # 1. X-Forwarded-For (ตัวแรกสุดคือ IP ของผู้ใช้จริง)
+    forwarded_for = request.headers.get("x-forwarded-for")
+    if forwarded_for:
+        client = forwarded_for.split(",")[0].strip()
+        if client:
+            return client
+
+    # 2. X-Real-IP
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
+
+    # 3. CF-Connecting-IP (Cloudflare)
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+
+    # 4. Fallback ไปที่ socket host
+    return request.client.host if request.client else "unknown"
 
 
 # ============================================================
@@ -134,7 +173,10 @@ class RateLimitStore:
                 self.suspicious_counts.pop(ip, None)
 
     def is_banned(self, ip: str) -> bool:
-        """ตรวจว่า IP ถูก ban หรือไม่"""
+        """ตรวจว่า IP ถูก ban หรือไม่ (ไม่แบน Private/Proxy IP)"""
+        if is_private_ip(ip):
+            return False
+
         if ip in self.banned_ips:
             if self.banned_ips[ip] > time.time():
                 return True
@@ -145,7 +187,11 @@ class RateLimitStore:
         return False
 
     def ban_ip(self, ip: str):
-        """แบน IP"""
+        """แบน IP (ยกเว้น Private/Proxy IP)"""
+        if is_private_ip(ip):
+            logger.info(f"ℹ️ Skipped banning private/proxy IP: {ip}")
+            return
+
         self.banned_ips[ip] = time.time() + BAN_DURATION_SECONDS
         logger.warning(
             f"🚫 BANNED IP: {ip} for {BAN_DURATION_SECONDS}s "
@@ -154,6 +200,9 @@ class RateLimitStore:
 
     def record_suspicious(self, ip: str) -> bool:
         """บันทึก request ที่น่าสงสัย, return True ถ้าถึง threshold แล้ว ban"""
+        if is_private_ip(ip):
+            return False
+
         self.suspicious_counts[ip] += 1
         if self.suspicious_counts[ip] >= SUSPICIOUS_THRESHOLD:
             self.ban_ip(ip)
@@ -161,7 +210,10 @@ class RateLimitStore:
         return False
 
     def check_rate_limit(self, ip: str) -> bool:
-        """ตรวจ rate limit, return True ถ้าเกิน limit"""
+        """ตรวจ rate limit, return True ถ้าเกิน limit (ยกเว้น Private IP)"""
+        if is_private_ip(ip):
+            return False
+
         now = time.time()
         cutoff = now - RATE_LIMIT_WINDOW
 
@@ -187,7 +239,6 @@ _store = RateLimitStore()
 
 def is_suspicious_path(path: str) -> bool:
     """ตรวจว่า path เป็น path ที่น่าสงสัยหรือไม่"""
-    # เช็ค decoded path ด้วย
     path_lower = path.lower()
 
     if path_lower in BLOCKED_PATHS:
@@ -213,7 +264,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        client_ip = request.client.host if request.client else "unknown"
+        client_ip = get_client_ip(request)
         path = request.url.path
 
         # ทำ cleanup เป็นระยะ
@@ -254,3 +305,4 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             )
 
         return await call_next(request)
+
