@@ -56,8 +56,6 @@ BLOCKED_PATHS: Set[str] = {
     "/.streamlit/secrets.toml",
     "/openapi.json",
     "/swagger.json",
-    "/api/config",
-    "/api/predict",
     "/wp-admin",
     "/wp-login.php",
     "/admin",
