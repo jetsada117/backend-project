@@ -2,7 +2,6 @@ FROM python:3.11-slim
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# ติดตั้ง System Dependencies สำหรับ OpenCV และการประมวลผลรูปภาพ
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
