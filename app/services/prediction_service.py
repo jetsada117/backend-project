@@ -202,7 +202,7 @@ class MultiModelPredictor:
                 self.age_model(dummy_input_224, training=False)
                 self.age_regression_model(dummy_input_224, training=False)
                 self.gender_model(dummy_input_224, training=False)
-                self.haircolor_model(dummy_input_224, training=False)
+                self.haircolor_model(dummy_input_299, training=False)
                 self.hairstyle_model(dummy_input_299, training=False)
                 self.eyebrows_model(dummy_input_224, training=False)
                 self.skin_model(dummy_input_299, training=False)
@@ -325,7 +325,7 @@ class MultiModelPredictor:
             if hairstyle_res == [0, 0, 1] or hairstyle_res == [0, 0]:
                 num_classes = self.haircolor_model.output_shape[-1]
                 return [0] * num_classes
-            inp = inception_preprocess(raw_224.copy())
+            inp = inception_preprocess(raw_299.copy())
             return self._predict_haircolor(inp)
 
         def run_age_regression():
