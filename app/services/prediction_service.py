@@ -85,7 +85,6 @@ class MultiModelPredictor:
         """
         ทำ Face Alignment (หมุนให้ตาตรง) และ Crop เฉพาะใบหน้า โดยใช้ OpenCV Haar Cascades
         """
-        # Create thread-safe instances per-request
         face_cascade = cv2.CascadeClassifier(
             os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
         )
@@ -188,7 +187,7 @@ class MultiModelPredictor:
             )
             self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
             self.haircolor_model = get_model(
-                "haircolor/haircolor_fine_model_convnext.keras"
+                "haircolor/haircolor_fine_model_inception.keras"
             )
             self.hairstyle_model = get_model("hairstyle_best_model_inception.keras")
             self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
