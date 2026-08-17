@@ -290,6 +290,7 @@ class MultiModelPredictor:
     def _predict_hairstyle(self, processed_image):
         pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
+        print(f"[HAIRSTYLE] Raw probs: {pred_probs} | Predicted index: {predicted_index}")
         if predicted_index == 0:
             return [0, 0, 1]  # ศีรษะล้าน
         elif predicted_index == 1:
