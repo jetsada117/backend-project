@@ -181,7 +181,7 @@ class MultiModelPredictor:
                             print(f"[ERROR] Exhausted retries for {filename}.")
                             raise e
 
-            self.age_model = get_model("age_finetuned_model_convnext.keras")
+            self.age_model = get_model("age/age_fine_regression_model_convnext.keras")
             self.age_regression_model = get_model(
                 "age_convnext_finetuned_regression_model.keras"
             )
