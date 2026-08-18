@@ -1,7 +1,7 @@
 from datetime import timedelta
 import os
 import random
-from typing import Any
+from typing import Any, Optional
 import uuid
 from fastapi import (
     APIRouter,
@@ -20,7 +20,7 @@ from app.api import deps
 from app.core import security
 from app.core.config import settings
 from app.schemas.auth import LoginRequest
-from app.schemas.token import Token
+from app.schemas.token import Token, RefreshTokenRequest
 from app.schemas.user import UserResponse, UserCreate
 from app.crud import user as user_crud
 from app.services import email_service, redis_service
@@ -128,14 +128,28 @@ async def register_user(
     return user
 
 
+@router.post("/refresh", response_model=Token)
 @router.post("/refresh-token", response_model=Token)
 async def refresh_token(
-    refresh_token: str,
+    refresh_data: Optional[RefreshTokenRequest] = None,
+    refresh_token: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
+    token_str = None
+    if refresh_data:
+        token_str = refresh_data.refresh_token or refresh_data.refreshToken
+    if not token_str and refresh_token:
+        token_str = refresh_token
+
+    if not token_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="กรุณาระบุ refresh token",
+        )
+
     try:
         payload = security.jwt.decode(
-            refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token_str, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = payload.get("sub")
         if token_data is None:
@@ -164,7 +178,7 @@ async def refresh_token(
             role=user.role,
             expires_delta=access_token_expires,
         ),
-        "refresh_token": refresh_token,
+        "refresh_token": token_str,
         "token_type": "bearer",
         "user": user,
     }
