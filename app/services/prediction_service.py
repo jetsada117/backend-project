@@ -318,8 +318,7 @@ class MultiModelPredictor:
         raw_299 = preprocessed["raw_299"]
 
         def run_hairstyle():
-            inp = inception_preprocess(raw_299.copy())
-            return self._predict_hairstyle(inp)
+            return self._predict_hairstyle(raw_299.copy())
 
         def run_haircolor(hairstyle_res):
             if hairstyle_res == [1, 0, 0] or sum(hairstyle_res) == 0:
