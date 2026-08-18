@@ -35,7 +35,7 @@ class FeatureEncoder:
             "ผิวคล้ำ",
         ]
         self.beard_categories = [
-            "เคราบาง",
+            "ไรหนวด",
             "หนวด",
             "เคราแพะ",
             "จอน",
@@ -137,8 +137,8 @@ class FeatureEncoder:
             if key in text:
                 extracted_features["age"] = value
 
-        if "เคราบาง" in text:
-            extracted_features["beard"].append("เคราบาง")
+        if "ไรหนวด" in text or "เคราบาง" in text:
+            extracted_features["beard"].append("ไรหนวด")
         elif "หนวด" in text:
             extracted_features["beard"].append("หนวด")
         if "เคราแพะ" in text:
