@@ -291,12 +291,9 @@ class MultiModelPredictor:
         pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         print(f"[HAIRSTYLE] Raw probs: {pred_probs} | Predicted index: {predicted_index}")
-        if predicted_index == 0:
-            return [0, 0, 1]  # ศีรษะล้าน
-        elif predicted_index == 1:
-            return [0, 1, 0]  # ผมหยักศก
-        else:
-            return [1, 0, 0]  # ผมตรง
+        result = [0] * len(pred_probs)
+        result[predicted_index] = 1
+        return result
 
     def _predict_eyebrows(self, processed_image):
         pred_probs = self.eyebrows_model(processed_image, training=False).numpy()[0]
@@ -325,7 +322,7 @@ class MultiModelPredictor:
             return self._predict_hairstyle(inp)
 
         def run_haircolor(hairstyle_res):
-            if hairstyle_res == [0, 0, 1] or hairstyle_res == [0, 0]:
+            if hairstyle_res == [1, 0, 0] or sum(hairstyle_res) == 0:
                 num_classes = self.haircolor_model.output_shape[-1]
                 return [0] * num_classes
             inp = inception_preprocess(raw_299.copy())
