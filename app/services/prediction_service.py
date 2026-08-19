@@ -192,9 +192,11 @@ class MultiModelPredictor:
             self.hairstyle_model = get_model(
                 "hairstyle/hairstyle_fine_model_inception_op.keras"
             )
-            self.eyebrows_model = get_model("eyebrows_best_model_convnext.keras")
-            self.skin_model = get_model("skin_best_model_inception.keras")
-            self.beard_model = get_model("beard_best_model_convnext.keras")
+            self.eyebrows_model = get_model(
+                "eyebrows/eyebrows_fine_model_convnext_op.keras"
+            )
+            self.skin_model = get_model("skin/skin_fine_model_convnext_op.keras")
+            self.beard_model = get_model("beard/beard_fine_model_convnext_op.keras")
 
             print("[INFO] Warming up models with dummy data...")
             try:
@@ -207,7 +209,7 @@ class MultiModelPredictor:
                 self.haircolor_model(dummy_input_299, training=False)
                 self.hairstyle_model(dummy_input_299, training=False)
                 self.eyebrows_model(dummy_input_224, training=False)
-                self.skin_model(dummy_input_299, training=False)
+                self.skin_model(dummy_input_224, training=False)
                 self.beard_model(dummy_input_224, training=False)
 
                 print("[SUCCESS] Warm-up complete! System is ready for fast response.")
@@ -290,7 +292,9 @@ class MultiModelPredictor:
     def _predict_hairstyle(self, processed_image):
         pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
-        print(f"[HAIRSTYLE] Raw probs: {pred_probs} | Predicted index: {predicted_index}")
+        print(
+            f"[HAIRSTYLE] Raw probs: {pred_probs} | Predicted index: {predicted_index}"
+        )
         result = [0] * len(pred_probs)
         result[predicted_index] = 1
         return result
@@ -340,7 +344,7 @@ class MultiModelPredictor:
             return self._predict_eyebrows(inp)
 
         def run_skin():
-            inp = inception_preprocess(raw_299.copy())
+            inp = convnext_preprocess(raw_224.copy())
             return self._predict_skin(inp)
 
         def run_beard():
