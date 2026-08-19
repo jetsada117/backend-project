@@ -45,7 +45,7 @@ async def test_save_prediction(client: AsyncClient, auth_headers: dict):
         "age_result": [0, 0, 1, 0, 0, 0],
         "gender_result": [0, 1],
         "haircolor_result": [0, 0, 1],
-        "hairstyle_result": [1, 0],
+        "hairstyle_result": [0, 1, 0],
         "eyebrows_result": [1, 0, 0, 0],
         "skin_result": [1, 0, 0, 0],
         "beard_result": [0, 0, 0, 0]

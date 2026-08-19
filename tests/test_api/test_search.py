@@ -22,7 +22,7 @@ async def test_search_similarity(client: AsyncClient, auth_headers: dict):
         "age_result": [0, 0, 1, 0, 0, 0], # วัยรุ่น
         "gender_result": [0, 1],         # ชาย
         "haircolor_result": [0, 0, 1],   # ผมดำ
-        "hairstyle_result": [1, 0],      # ผมตรง
+        "hairstyle_result": [0, 1, 0],   # ผมตรง
         "eyebrows_result": [1, 0, 0, 0], # คิ้วโก่ง
         "skin_result": [1, 0, 0, 0],      # ผิวขาว
         "beard_result": [0, 0, 0, 0]      # ไม่ระบุ
