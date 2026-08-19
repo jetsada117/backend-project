@@ -180,7 +180,7 @@ class MultiModelPredictor:
 
             self.age_model = get_model("age/age_fine_regression_model_convnext.keras")
             self.age_regression_model = get_model(
-                "age_convnext_finetuned_regression_model.keras"
+                "age/age_fine_regression_model_convnext.keras"
             )
             self.gender_model = get_model("gender/gender_base_model_convnext_op.keras")
             self.haircolor_model = get_model(
