@@ -16,9 +16,6 @@ from app.core.config import settings
 from tensorflow.keras.applications.convnext import (  # type: ignore
     preprocess_input as convnext_preprocess,
 )
-from tensorflow.keras.applications.inception_v3 import (  # type: ignore
-    preprocess_input as inception_preprocess,
-)
 
 
 class RandomShear(layers.Layer):
@@ -328,8 +325,7 @@ class MultiModelPredictor:
             if hairstyle_res == [1, 0, 0] or sum(hairstyle_res) == 0:
                 num_classes = self.haircolor_model.output_shape[-1]
                 return [0] * num_classes
-            inp = inception_preprocess(raw_299.copy())
-            return self._predict_haircolor(inp)
+            return self._predict_haircolor(raw_299.copy())
 
         def run_age_regression():
             inp = convnext_preprocess(raw_224.copy())
