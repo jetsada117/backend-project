@@ -148,7 +148,9 @@ class MultiModelPredictor:
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
             faces_rot = face_cascade.detectMultiScale(gray_rot, 1.3, 5)
             if len(faces_rot) > 0:
-                x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[0]
+                x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[
+                    0
+                ]
 
         pad_w = int(w * 0.6)
         pad_h = int(h * 0.6)
@@ -196,7 +198,7 @@ class MultiModelPredictor:
                             print(f"[ERROR] Exhausted retries for {filename}.")
                             raise e
 
-            self.age_model = get_model("age/age_fine_regression_model_convnext.keras")
+            self.age_model = get_model("age/age_fine_model_convnext_op.keras")
             self.age_regression_model = get_model(
                 "age/age_fine_regression_model_convnext.keras"
             )
@@ -375,6 +377,10 @@ class MultiModelPredictor:
             inp = convnext_preprocess(raw_224.copy())
             return self._predict_age_regression(inp)
 
+        def run_age_classification():
+            inp = convnext_preprocess(raw_224.copy())
+            return self._predict_age(inp)
+
         def run_gender():
             inp = convnext_preprocess(raw_224.copy())
             return self._predict_gender(inp)
@@ -393,7 +399,7 @@ class MultiModelPredictor:
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
             future_hairstyle = pool.submit(run_hairstyle)
-            future_age = pool.submit(run_age_regression)
+            future_age = pool.submit(run_age_classification)
             future_gender = pool.submit(run_gender)
             future_eyebrows = pool.submit(run_eyebrows)
             future_skin = pool.submit(run_skin)
