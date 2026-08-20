@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import pandas as pd
 
@@ -9,7 +10,7 @@ class FeatureEncoder:
 
     def __init__(self):
         """
-        กำหนดหมวดหมู่ Feature ทั้งหมดและ Mapping คำพ้องความหมายของช่วงวัย
+        กำหนดหมวดหมู่ Feature ทั้งหมดและสร้าง Compiled Regex สำหรับสกัดช่วงวัย
         """
         self.age_categories = [
             "วัยเด็กเล็ก",
@@ -58,33 +59,27 @@ class FeatureEncoder:
             + self.beard_categories
         )
 
-        self.age_mapping = {
-            "เด็กเล็ก": "วัยเด็กเล็ก",
-            "เด็กน้อย": "วัยเด็กเล็ก",
-            "ทารก": "วัยเด็กเล็ก",
-            "อนุบาล": "วัยเด็กเล็ก",
-            "เด็กโต": "วัยเด็กโต",
-            "ประถม": "วัยเด็กโต",
-            "เด็กประถม": "วัยเด็กโต",
-            "วัยรุ่น": "วัยรุ่น",
-            "มัธยม": "วัยรุ่น",
-            "เด็กมัธยม": "วัยรุ่น",
-            "มหาลัย": "วัยรุ่น",
-            "มหาวิทยาลัย": "วัยรุ่น",
-            "วัยเรียน": "วัยรุ่น",
-            "ผู้ใหญ่ตอนต้น": "วัยผู้ใหญ่ตอนต้น",
-            "วัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
-            "คนวัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
-            "ผู้ใหญ่ตอนกลาง": "วัยผู้ใหญ่ตอนกลาง",
-            "วัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
-            "คนวัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
-            "สูงอายุ": "วัยสูงอายุ",
-            "ผู้สูงอายุ": "วัยสูงอายุ",
-            "คนแก่": "วัยสูงอายุ",
-            "คนชรา": "วัยสูงอายุ",
-            "วัยชรา": "วัยสูงอายุ",
-            "ผู้เฒ่า": "วัยสูงอายุ"
+        self.age_groups = {
+            "วัยเด็กเล็ก": ["เด็กเล็ก", "เด็กน้อย", "ทารก", "อนุบาล", "วัยเด็กเล็ก"],
+            "วัยเด็กโต": ["เด็กประถม", "เด็กโต", "ประถม", "วัยเด็กโต"],
+            "วัยรุ่น": ["เด็กมัธยม", "มหาวิทยาลัย", "มัธยม", "มหาลัย", "วัยเรียน", "วัยรุ่น"],
+            "วัยผู้ใหญ่ตอนต้น": ["ผู้ใหญ่ตอนต้น", "คนวัยทำงาน", "วัยทำงาน"],
+            "วัยผู้ใหญ่ตอนกลาง": ["ผู้ใหญ่ตอนกลาง", "คนวัยกลางคน", "วัยกลางคน"],
+            "วัยสูงอายุ": ["ผู้สูงอายุ", "สูงอายุ", "คนแก่", "คนชรา", "วัยชรา", "ผู้เฒ่า"],
         }
+
+        self.age_keyword_to_category = {
+            keyword: category
+            for category, keywords in self.age_groups.items()
+            for keyword in keywords
+        }
+
+        sorted_age_keywords = sorted(
+            self.age_keyword_to_category.keys(), key=len, reverse=True
+        )
+        self.age_pattern = re.compile(
+            "|".join(re.escape(kw) for kw in sorted_age_keywords)
+        )
 
     def _encode_one_hot(self, target_value, category_list):
         """
@@ -137,9 +132,9 @@ class FeatureEncoder:
                 extracted_features["skin"] = category
                 break
 
-        for key, value in self.age_mapping.items():
-            if key in text:
-                extracted_features["age"] = value
+        age_match = self.age_pattern.search(text)
+        if age_match:
+            extracted_features["age"] = self.age_keyword_to_category[age_match.group(0)]
 
         if "ไรหนวด" in text or "เคราบาง" in text:
             extracted_features["beard"].append("ไรหนวด")
