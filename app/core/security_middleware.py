@@ -21,10 +21,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 logger = logging.getLogger("uvicorn")
 
 
-# ============================================================
-# Helper functions for IP detection
-# ============================================================
-
 def is_private_ip(ip_str: str) -> bool:
     """ตรวจว่า IP เป็น Private IP, Loopback หรือ Local Proxy หรือไม่"""
     try:
@@ -38,49 +34,29 @@ def get_client_ip(request: Request) -> str:
     """
     ดึง IP จริงของ Client จาก Headers (รองรับ Reverse Proxy เช่น Hugging Face, Cloudflare)
     """
-    # 1. X-Forwarded-For (ตัวแรกสุดคือ IP ของผู้ใช้จริง)
     forwarded_for = request.headers.get("x-forwarded-for")
     if forwarded_for:
         client = forwarded_for.split(",")[0].strip()
         if client:
             return client
 
-    # 2. X-Real-IP
     real_ip = request.headers.get("x-real-ip")
     if real_ip:
         return real_ip.strip()
 
-    # 3. CF-Connecting-IP (Cloudflare)
     cf_ip = request.headers.get("cf-connecting-ip")
     if cf_ip:
         return cf_ip.strip()
 
-    # 4. Fallback ไปที่ socket host
     return request.client.host if request.client else "unknown"
 
 
-# ============================================================
-# Configuration
-# ============================================================
-
-# จำนวน request สูงสุดต่อ IP ต่อนาที
 RATE_LIMIT_PER_MINUTE: int = 60
-
-# จำนวนครั้งที่เข้า path อันตรายก่อนจะถูก ban
 SUSPICIOUS_THRESHOLD: int = 5
-
-# ระยะเวลา ban (วินาที) — default 1 ชั่วโมง
 BAN_DURATION_SECONDS: int = 3600
-
-# ระยะเวลา rate-limit window (วินาที)
 RATE_LIMIT_WINDOW: int = 60
 
 
-# ============================================================
-# Suspicious path patterns
-# ============================================================
-
-# Exact paths ที่ต้องบล็อก
 BLOCKED_PATHS: Set[str] = {
     "/.env",
     "/.env.local",
@@ -117,47 +93,36 @@ BLOCKED_PATHS: Set[str] = {
     "/composer.json",
 }
 
-# Regex patterns สำหรับ path ที่น่าสงสัย
 BLOCKED_PATH_PATTERNS = [
-    re.compile(r"/\.env"),                     # ทุก path ที่มี .env
-    re.compile(r"/file[=%].*\.env"),            # path traversal ผ่าน file=../.env
-    re.compile(r"\.\./"),                       # directory traversal
-    re.compile(r"\.\.\%"),                      # encoded directory traversal
-    re.compile(r"/\.git(/|$)"),                 # git directory
-    re.compile(r"/\.(svn|hg|bzr)(/|$)"),       # version control dirs
-    re.compile(r"\.(sql|bak|backup|dump)$"),    # database dumps
-    re.compile(r"/wp-(admin|content|includes)"),# wordpress paths
-    re.compile(r"/cgi-bin/"),                   # CGI scripts
-    re.compile(r"/actuator"),                   # Spring Boot actuator
+    re.compile(r"/\.env"),
+    re.compile(r"/file[=%].*\.env"),
+    re.compile(r"\.\./"),
+    re.compile(r"\.\.\%"),
+    re.compile(r"/\.git(/|$)"),
+    re.compile(r"/\.(svn|hg|bzr)(/|$)"),
+    re.compile(r"\.(sql|bak|backup|dump)$"),
+    re.compile(r"/wp-(admin|content|includes)"),
+    re.compile(r"/cgi-bin/"),
+    re.compile(r"/actuator"),
 ]
 
-
-# ============================================================
-# In-memory storage (thread-safe enough for async single-process)
-# ============================================================
 
 class RateLimitStore:
     """เก็บข้อมูล rate-limit และ ban list ใน memory"""
 
     def __init__(self):
-        # {ip: [timestamp, timestamp, ...]}
         self.request_counts: dict[str, list[float]] = defaultdict(list)
-        # {ip: count} — จำนวนครั้งที่เข้า path อันตราย
         self.suspicious_counts: dict[str, int] = defaultdict(int)
-        # {ip: ban_until_timestamp}
         self.banned_ips: dict[str, float] = {}
-        # ล่าสุดที่ทำ cleanup
         self._last_cleanup: float = time.time()
 
     def cleanup(self):
         """ลบข้อมูลเก่าเป็นระยะ ป้องกัน memory leak"""
         now = time.time()
-        # cleanup ทุก 5 นาที
         if now - self._last_cleanup < 300:
             return
         self._last_cleanup = now
 
-        # ลบ request counts เก่ากว่า window
         cutoff = now - RATE_LIMIT_WINDOW
         for ip in list(self.request_counts.keys()):
             self.request_counts[ip] = [
@@ -166,7 +131,6 @@ class RateLimitStore:
             if not self.request_counts[ip]:
                 del self.request_counts[ip]
 
-        # ลบ IP ที่ ban หมดอายุ
         for ip in list(self.banned_ips.keys()):
             if self.banned_ips[ip] <= now:
                 del self.banned_ips[ip]
@@ -181,7 +145,6 @@ class RateLimitStore:
             if self.banned_ips[ip] > time.time():
                 return True
             else:
-                # ban หมดอายุแล้ว
                 del self.banned_ips[ip]
                 self.suspicious_counts.pop(ip, None)
         return False
@@ -217,25 +180,19 @@ class RateLimitStore:
         now = time.time()
         cutoff = now - RATE_LIMIT_WINDOW
 
-        # ลบ timestamps เก่า
         self.request_counts[ip] = [
             t for t in self.request_counts[ip] if t > cutoff
         ]
 
         if len(self.request_counts[ip]) >= RATE_LIMIT_PER_MINUTE:
-            return True  # เกิน limit
+            return True
 
         self.request_counts[ip].append(now)
         return False
 
 
-# Singleton store
 _store = RateLimitStore()
 
-
-# ============================================================
-# Helper functions
-# ============================================================
 
 def is_suspicious_path(path: str) -> bool:
     """ตรวจว่า path เป็น path ที่น่าสงสัยหรือไม่"""
@@ -251,10 +208,6 @@ def is_suspicious_path(path: str) -> bool:
     return False
 
 
-# ============================================================
-# Middleware
-# ============================================================
-
 class SecurityMiddleware(BaseHTTPMiddleware):
     """
     Security Middleware ที่ทำงาน 3 ขั้นตอน:
@@ -267,10 +220,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         client_ip = get_client_ip(request)
         path = request.url.path
 
-        # ทำ cleanup เป็นระยะ
         _store.cleanup()
 
-        # ---- ขั้นที่ 1: ตรวจ ban list ----
         if _store.is_banned(client_ip):
             logger.warning(
                 f"BLOCKED banned IP: {client_ip} | Path: {path}"
@@ -280,7 +231,6 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Access denied"},
             )
 
-        # ---- ขั้นที่ 2: ตรวจ suspicious path ----
         if is_suspicious_path(path):
             was_banned = _store.record_suspicious(client_ip)
             logger.warning(

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone  # ใช้ timezone เพื่อความแม่นยำ
+from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 from jose import jwt
 import bcrypt
@@ -10,6 +10,9 @@ def create_access_token(
     role: str,
     expires_delta: timedelta = None,
 ) -> str:
+    """
+    สร้าง JWT Access Token พร้อมกำหนดเวลาหมดอายุ
+    """
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -33,6 +36,9 @@ def create_access_token(
 def create_refresh_token(
     subject: Union[str, Any], expires_delta: timedelta = None
 ) -> str:
+    """
+    สร้าง JWT Refresh Token พร้อมกำหนดเวลาหมดอายุ
+    """
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -48,10 +54,16 @@ def create_refresh_token(
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    ตรวจสอบความถูกต้องของ Password เทียบกับ Hashed Password
+    """
     return bcrypt.checkpw(
         plain_password.encode("utf-8"), hashed_password.encode("utf-8")
     )
 
 
 def get_password_hash(password: str) -> str:
+    """
+    แปลง Password เป็น Bcrypt Hash
+    """
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")

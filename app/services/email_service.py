@@ -3,6 +3,9 @@ from app.core.config import settings
 
 
 async def send_otp_email(email_to: str, otp_code: str):
+    """
+    ส่งอีเมล OTP ผ่าน Brevo SMTP API
+    """
     url = "https://api.brevo.com/v3/smtp/email"
 
     headers = {
@@ -27,7 +30,6 @@ async def send_otp_email(email_to: str, otp_code: str):
     }
 
     try:
-        # ใช้ httpx เพื่อยิง API ออกไปที่พอร์ต 443 (ทะลุบล็อก 100%)
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 url, headers=headers, json=payload, timeout=10.0

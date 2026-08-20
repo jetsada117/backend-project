@@ -1,4 +1,3 @@
-# app/services/prediction_service.py
 import os
 import asyncio
 import threading
@@ -19,11 +18,18 @@ from tensorflow.keras.applications.convnext import (  # type: ignore
 
 
 class RandomShear(layers.Layer):
+    """
+    Custom Keras Layer สำหรับทำ Random Shear Augmentation ระหว่าง Training
+    """
+
     def __init__(self, shear_range=0.1, **kwargs):
         super(RandomShear, self).__init__(**kwargs)
         self.shear_range = shear_range
 
     def call(self, images, training=None):
+        """
+        Apply Random Shear Transform ให้กับ Batch ของภาพ
+        """
         if not training:
             return images
         batch_size = tf.shape(images)[0]
@@ -43,6 +49,9 @@ class RandomShear(layers.Layer):
         )
 
     def get_config(self):
+        """
+        Return config ของ Layer รวม shear_range สำหรับ Serialization
+        """
         config = super(RandomShear, self).get_config()
         config.update({"shear_range": self.shear_range})
         return config
@@ -53,6 +62,9 @@ _original_bn_init = _OriginalBatchNormalization.__init__
 
 
 def _patched_bn_init(self, *args, **kwargs):
+    """
+    Patch BatchNormalization เพื่อลบ Arguments ที่ไม่รองรับใน TF เวอร์ชันใหม่
+    """
     kwargs.pop("renorm", None)
     kwargs.pop("renorm_clipping", None)
     kwargs.pop("renorm_momentum", None)
@@ -63,7 +75,14 @@ _OriginalBatchNormalization.__init__ = _patched_bn_init
 
 
 class MultiModelPredictor:
+    """
+    โหลดและรัน ML Models หลายตัวพร้อมกันสำหรับทำนายลักษณะใบหน้า
+    """
+
     def __init__(self):
+        """
+        กำหนดตัวแปร Models, ThreadPoolExecutor และ Lock สำหรับการโหลดแบบ Thread-safe
+        """
         self.age_model = None
         self.age_regression_model = None
         self.gender_model = None
@@ -75,7 +94,6 @@ class MultiModelPredictor:
         self.is_loaded = False
 
         self.executor = ThreadPoolExecutor(max_workers=os.cpu_count() or 4)
-
         self._lock = threading.Lock()
 
     def _align_and_crop_face(self, image_np):
@@ -130,9 +148,7 @@ class MultiModelPredictor:
             gray_rot = cv2.cvtColor(image_np, cv2.COLOR_BGR2GRAY)
             faces_rot = face_cascade.detectMultiScale(gray_rot, 1.3, 5)
             if len(faces_rot) > 0:
-                x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[
-                    0
-                ]
+                x, y, w, h = sorted(faces_rot, key=lambda f: f[2] * f[3], reverse=True)[0]
 
         pad_w = int(w * 0.6)
         pad_h = int(h * 0.6)
@@ -145,7 +161,9 @@ class MultiModelPredictor:
         return image_np[y1:y2, x1:x2]
 
     def load_models(self):
-        """ฟังก์ชันสำหรับโหลดโมเดลเก็บไว้ใน Class (ทำหน้าที่เป็น In-memory Cache)"""
+        """
+        ดาวน์โหลดและโหลด Models ทั้งหมดจาก Hugging Face Hub พร้อม Warm-up (In-memory Cache)
+        """
         if self.is_loaded:
             return
 
@@ -218,8 +236,7 @@ class MultiModelPredictor:
 
     def get_preprocessed_images(self, image_bytes: bytes):
         """
-        1. ทำ Face Alignment และ Crop เฉพาะใบหน้า
-        2. Resize และเตรียมรูปสำหรับโมเดลต่างๆ โดยใช้ OpenCV
+        ทำ Face Alignment, Crop ใบหน้า และ Resize เตรียมรูปสำหรับโมเดลต่างๆ โดยใช้ OpenCV
         """
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_raw = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -250,6 +267,9 @@ class MultiModelPredictor:
         }
 
     def _map_age_to_range(self, age: float) -> list:
+        """
+        แปลงค่าอายุจาก Regression เป็น One-Hot Vector ของช่วงวัย 6 ช่วง
+        """
         if age <= 6:
             return [1, 0, 0, 0, 0, 0]
         elif age <= 12:
@@ -264,11 +284,17 @@ class MultiModelPredictor:
             return [0, 0, 0, 0, 0, 1]
 
     def _predict_age_regression(self, processed_image):
+        """
+        ทำนายอายุด้วย Regression Model แล้วแปลงเป็น One-Hot Vector ช่วงวัย
+        """
         pred = self.age_regression_model(processed_image, training=False).numpy()
         pred_age = pred[0][0]
         return self._map_age_to_range(pred_age)
 
     def _predict_age(self, processed_image):
+        """
+        ทำนายช่วงวัยด้วย Classification Model และ Return One-Hot Vector
+        """
         pred_probs = self.age_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
@@ -276,10 +302,16 @@ class MultiModelPredictor:
         return result
 
     def _predict_gender(self, processed_image):
+        """
+        ทำนายเพศและ Return [1, 0] หญิง หรือ [0, 1] ชาย
+        """
         pred_prob = self.gender_model(processed_image, training=False).numpy()[0][0]
         return [0, 1] if pred_prob > 0.5 else [1, 0]
 
     def _predict_haircolor(self, processed_image):
+        """
+        ทำนายสีผมและ Return One-Hot Vector
+        """
         pred_probs = self.haircolor_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
@@ -287,6 +319,9 @@ class MultiModelPredictor:
         return result
 
     def _predict_hairstyle(self, processed_image):
+        """
+        ทำนายทรงผมและ Return One-Hot Vector
+        """
         pred_probs = self.hairstyle_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         print(
@@ -297,10 +332,16 @@ class MultiModelPredictor:
         return result
 
     def _predict_eyebrows(self, processed_image):
+        """
+        ทำนายลักษณะคิ้วและ Return Multi-Hot Vector (รองรับหลายลักษณะพร้อมกัน)
+        """
         pred_probs = self.eyebrows_model(processed_image, training=False).numpy()[0]
         return (pred_probs > 0.5).astype(int).tolist()
 
     def _predict_skin(self, processed_image):
+        """
+        ทำนายสีผิวและ Return One-Hot Vector
+        """
         pred_probs = self.skin_model(processed_image, training=False).numpy()[0]
         predicted_index = np.argmax(pred_probs)
         result = [0] * len(pred_probs)
@@ -308,12 +349,15 @@ class MultiModelPredictor:
         return result
 
     def _predict_beard(self, processed_image):
+        """
+        ทำนายลักษณะหนวดเคราและ Return Multi-Hot Vector (รองรับหลายลักษณะพร้อมกัน)
+        """
         pred_probs = self.beard_model(processed_image, training=False).numpy()[0]
         return (pred_probs > 0.5).astype(int).tolist()
 
     def _run_predictions(self, preprocessed):
         """
-        รันทุกโมเดลแบบคู่ขนาน (Parallel) เพื่อลด Response Time
+        รัน Models ทุกตัวแบบ Parallel ด้วย ThreadPoolExecutor เพื่อลด Response Time
         """
         raw_224 = preprocessed["raw_224"]
         raw_299 = preprocessed["raw_299"]
@@ -376,7 +420,7 @@ class MultiModelPredictor:
 
     async def predict_all(self, image_bytes: bytes) -> dict:
         """
-        ฟังก์ชันหลักที่ API เรียกใช้งาน
+        ฟังก์ชันหลักที่ API เรียกใช้ รับ Image Bytes แล้ว Preprocess และรัน Models ทั้งหมด
         """
         loop = asyncio.get_running_loop()
 

@@ -4,6 +4,7 @@ from app.crud import predictions as prediction_crud
 from app.models.user import User
 from app.services.encoding_service import encoder
 from app.services.cosine_similarity_service import scorer
+import numpy as np
 
 from app.api import deps
 
@@ -17,6 +18,9 @@ async def calculate_similarity(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
+    """
+    ค้นหาใบหน้าที่ใกล้เคียงที่สุดจาก Description โดยใช้ Weighted Cosine Similarity
+    """
     current_user_vector = encoder.text_to_vector(description)
 
     db_predictions = await prediction_crud.get_prediction(db)
@@ -50,8 +54,6 @@ async def calculate_similarity(
 
     if not vectors_list:
         return []
-
-    import numpy as np
 
     db_matrix = np.array(vectors_list)
 

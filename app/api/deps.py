@@ -14,18 +14,22 @@ reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"/api/v1/auth/login")
 
 
 async def get_db() -> AsyncGenerator:
+    """
+    สร้าง Database Session และปิดอัตโนมัติหลังใช้งาน
+    """
     async with SessionLocal() as db:
         try:
             yield db
         finally:
-            # SessionLocal จะปิดตัวเองอัตโนมัติเมื่อจบ async with
-            # หรือถ้าไม่ได้ใช้ context manager ต้อง await db.close() เอง
             pass
 
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db), token: str = Depends(reusable_oauth2)
 ) -> User:
+    """
+    ตรวจสอบ JWT Token และดึงข้อมูลผู้ใช้ปัจจุบัน
+    """
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -45,4 +49,7 @@ async def get_current_user(
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
+    """
+    ดึงข้อมูลผู้ใช้ที่ Login อยู่และ Active
+    """
     return current_user

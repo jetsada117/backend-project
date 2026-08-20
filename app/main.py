@@ -18,6 +18,9 @@ logger = logging.getLogger("uvicorn")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    จัดการ Lifecycle ของ Application โดยโหลด Models ตอน Startup
+    """
     print("Starting up FastAPI application...")
     predictor_service.load_models()
     yield
@@ -33,12 +36,14 @@ app = FastAPI(
 )
 
 
-# Security middleware (outermost — runs first)
 app.add_middleware(SecurityMiddleware)
 
 
 @app.middleware("http")
 async def catch_exceptions_middleware(request: Request, call_next):
+    """
+    Middleware สำหรับ Log ทุก Request และจัดการ Exception ระดับ Global
+    """
     start_time = time.perf_counter()
     request_time = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
     try:
@@ -70,17 +75,25 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/", response_class=PlainTextResponse)
 def index():
+    """
+    Health Check Endpoint
+    """
     return "Hello World!!"
 
 
 @app.head("/", response_class=PlainTextResponse)
 def index_head():
+    """
+    Health Check Endpoint สำหรับ HEAD Request
+    """
     return "Hello World!!"
 
 
-# Path: /scalar
 @app.get("/scalar", include_in_schema=False)
 async def scalar_html():
+    """
+    แสดงหน้า API Reference ด้วย Scalar UI
+    """
     return get_scalar_api_reference(
         openapi_url=app.openapi_url,
         title=app.title,

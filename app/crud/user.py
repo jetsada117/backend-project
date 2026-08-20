@@ -5,6 +5,9 @@ from app.core.security import get_password_hash, verify_password
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> UserResponse:
+    """
+    ดึงข้อมูลผู้ใช้จากฐานข้อมูลโดยใช้ ID
+    """
     sql = text(
         "SELECT id, email, first_name, last_name, hashed_password, role, profile_image_url "
         "FROM users WHERE id = :id"
@@ -16,6 +19,9 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> UserResponse:
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> UserResponse:
+    """
+    ดึงข้อมูลผู้ใช้จากฐานข้อมูลโดยใช้ Email
+    """
     sql = text(
         "SELECT id, email, first_name, last_name, hashed_password, role, profile_image_url "
         "FROM users WHERE email = :email"
@@ -27,6 +33,9 @@ async def get_user_by_email(db: AsyncSession, email: str) -> UserResponse:
 
 
 async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
+    """
+    ลงทะเบียนผู้ใช้ใหม่พร้อม Hash Password และบันทึกลงฐานข้อมูล
+    """
     hashed_password = get_password_hash(user.password)
     default_role = UserRole.USER.value
 
@@ -52,6 +61,9 @@ async def register(db: AsyncSession, user: UserCreate) -> UserResponse:
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str):
+    """
+    ตรวจสอบ Email และ Password แล้ว Return ข้อมูลผู้ใช้ถ้าถูกต้อง
+    """
     user = await get_user_by_email(db, email)
     if not user:
         return None
@@ -64,7 +76,7 @@ async def update_user_profile_image(
     db: AsyncSession, user_id: int, profile_image_url: str
 ):
     """
-    อัปเดต URL ของภาพโปรไฟล์ของผู้ใช้
+    อัปเดต URL รูปโปรไฟล์ของผู้ใช้
     """
     sql = text("UPDATE users SET profile_image_url = :profile_image_url WHERE id = :id")
     param = {"profile_image_url": profile_image_url, "id": user_id}

@@ -34,6 +34,9 @@ async def login_access_token(
     login_data: LoginRequest,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
+    """
+    ตรวจสอบ Email และ Password แล้ว Return Access Token และ Refresh Token
+    """
     user = await user_crud.authenticate_user(
         db, email=login_data.email, password=login_data.password
     )
@@ -60,6 +63,9 @@ async def request_otp(
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: AsyncSession = Depends(deps.get_db),
 ):
+    """
+    สร้าง OTP และส่งไปยัง Email ที่ระบุสำหรับการยืนยันตัวตน
+    """
     user_exists = await user_crud.get_user_by_email(db, email=email)
 
     if user_exists:
@@ -86,6 +92,9 @@ async def register_user(
     file: UploadFile = File(...),
     otp_code: str = Form(...),
 ) -> Any:
+    """
+    ลงทะเบียนผู้ใช้ใหม่ โดยตรวจสอบ OTP, อัปโหลดรูปโปรไฟล์ และบันทึกข้อมูล
+    """
     is_valid = await redis_service.verify_otp(email, otp_code)
     if not is_valid:
         raise HTTPException(status_code=400, detail="รหัส OTP ไม่ถูกต้องหรือหมดอายุ")
@@ -135,6 +144,9 @@ async def refresh_token(
     refresh_token: Optional[str] = None,
     db: AsyncSession = Depends(deps.get_db),
 ) -> Any:
+    """
+    ตรวจสอบ Refresh Token และออก Access Token ใหม่
+    """
     token_str = None
     if refresh_data:
         token_str = refresh_data.refresh_token or refresh_data.refreshToken
@@ -186,4 +198,7 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout():
+    """
+    ออกจากระบบ
+    """
     return {"message": "ออกจากระบบสำเร็จ"}

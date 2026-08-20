@@ -25,6 +25,9 @@ async def predict_item_image(
     file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_active_user),
 ):
+    """
+    รับรูปภาพและรัน ML Models เพื่อทำนายลักษณะใบหน้าทั้งหมด
+    """
     MAX_FILE_SIZE = 5 * 1024 * 1024
     if file.size > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="ขนาดไฟล์ต้องไม่เกิน 5MB")
@@ -50,7 +53,6 @@ async def predict_item_image(
         f"Taken: {ml_elapsed_time:.4f}s"
     )
 
-    # ใช้ Helper ในการรวม Vector และแปลงเป็นคำบรรยาย
     full_vector = encoder.combine_results_to_vector(predictions)
     descriptions = encoder.vector_to_text(full_vector)
 
@@ -68,6 +70,9 @@ async def save_item_prediction(
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user),
 ):
+    """
+    อัปโหลดรูปภาพและบันทึกผลการทำนายที่ผู้ใช้ยืนยันแล้วลงฐานข้อมูล
+    """
     try:
         predictions_dict = json.loads(predictions_json)
     except json.JSONDecodeError:

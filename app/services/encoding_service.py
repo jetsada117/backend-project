@@ -3,7 +3,14 @@ import pandas as pd
 
 
 class FeatureEncoder:
+    """
+    แปลงข้อความลักษณะใบหน้าเป็น Feature Vector และแปลงกลับเป็นข้อความ
+    """
+
     def __init__(self):
+        """
+        กำหนดหมวดหมู่ Feature ทั้งหมดและ Mapping คำพ้องความหมายของช่วงวัย
+        """
         self.age_categories = [
             "วัยเด็กเล็ก",
             "วัยเด็กโต",
@@ -52,36 +59,25 @@ class FeatureEncoder:
         )
 
         self.age_mapping = {
-            # วัยเด็กเล็ก (2-6 ปี)
             "เด็กเล็ก": "วัยเด็กเล็ก",
             "เด็กน้อย": "วัยเด็กเล็ก",
             "ทารก": "วัยเด็กเล็ก",
             "อนุบาล": "วัยเด็กเล็ก",
-            
-            # วัยเด็กโต (7-12 ปี)
             "เด็กโต": "วัยเด็กโต",
             "ประถม": "วัยเด็กโต",
             "เด็กประถม": "วัยเด็กโต",
-            
-            # วัยรุ่น (13-25 ปี)
             "วัยรุ่น": "วัยรุ่น",
             "มัธยม": "วัยรุ่น",
             "เด็กมัธยม": "วัยรุ่น",
             "มหาลัย": "วัยรุ่น",
             "มหาวิทยาลัย": "วัยรุ่น",
             "วัยเรียน": "วัยรุ่น",
-            
-            # วัยผู้ใหญ่ตอนต้น (26-40 ปี)
             "ผู้ใหญ่ตอนต้น": "วัยผู้ใหญ่ตอนต้น",
             "วัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
             "คนวัยทำงาน": "วัยผู้ใหญ่ตอนต้น",
-            
-            # วัยผู้ใหญ่ตอนกลาง (41-65 ปี)
             "ผู้ใหญ่ตอนกลาง": "วัยผู้ใหญ่ตอนกลาง",
             "วัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
             "คนวัยกลางคน": "วัยผู้ใหญ่ตอนกลาง",
-            
-            # วัยสูงอายุ (66 ปีขึ้นไป)
             "สูงอายุ": "วัยสูงอายุ",
             "ผู้สูงอายุ": "วัยสูงอายุ",
             "คนแก่": "วัยสูงอายุ",
@@ -91,13 +87,21 @@ class FeatureEncoder:
         }
 
     def _encode_one_hot(self, target_value, category_list):
+        """
+        แปลง target_value เป็น One-Hot Vector ตาม category_list
+        """
         return [1 if target_value == category else 0 for category in category_list]
 
     def _encode_multi_hot(self, target_list, category_list):
+        """
+        แปลง target_list เป็น Multi-Hot Vector สำหรับ Feature ที่มีได้หลายค่า
+        """
         return [1 if category in target_list else 0 for category in category_list]
 
     def parse_text(self, text):
-        """ฟังก์ชันสกัดข้อมูลจากข้อความให้อยู่ในรูปแบบ Dictionary"""
+        """
+        สกัด Feature แต่ละประเภทจากข้อความและ Return เป็น Dictionary
+        """
         text = text.replace(" ", "")
         extracted_features = {
             "age": None,
@@ -149,7 +153,9 @@ class FeatureEncoder:
         return extracted_features
 
     def text_to_vector(self, text, verbose=False):
-        """ฟังก์ชันแปลงข้อความให้เป็น Vector"""
+        """
+        แปลงข้อความลักษณะใบหน้าเป็น Feature Vector แบบ NumPy Array
+        """
         parsed_data = self.parse_text(text)
 
         if verbose:
@@ -182,8 +188,7 @@ class FeatureEncoder:
 
     def vector_to_text(self, vector):
         """
-        ฟังก์ชันแปลง Vector [0, 1, 0, ...] กลับเป็นคำภาษาไทย
-        โดยอิงจาก index ของ self.feature_names
+        แปลง Vector [0, 1, 0, ...] กลับเป็นรายการคำภาษาไทย โดยอิงจาก feature_names
         """
         matched_features = []
         for i, val in enumerate(vector):
@@ -205,12 +210,16 @@ class FeatureEncoder:
         return matched_features
 
     def to_dataframe(self, vector):
-        """Helper Method สำหรับแสดงผลในรูปแบบ DataFrame แนวตั้ง"""
+        """
+        แปลง Vector เป็น DataFrame แนวตั้งสำหรับแสดงผลและ Debug
+        """
         df = pd.DataFrame([vector], columns=self.feature_names)
         return df.T
 
     def combine_results_to_vector(self, pred_dict: dict) -> list:
-        """รวมผลจากโมเดลทุกตัวเป็น Vector เดียว"""
+        """
+        รวมผลลัพธ์จาก Models ทุกตัวเป็น Feature Vector เดียว
+        """
         keys = [
             "age_result",
             "gender_result",
@@ -226,7 +235,9 @@ class FeatureEncoder:
         return full_vector
 
     def get_thai_description_dict(self, pred_dict: dict) -> dict:
-        """แปลงผลจากโมเดล (Array) เป็นข้อความภาษาไทยสำหรับแต่ละฟีเจอร์"""
+        """
+        แปลงผลลัพธ์จาก Models เป็นข้อความภาษาไทยสำหรับแต่ละ Feature
+        """
         try:
             age_text = self.age_categories[np.argmax(pred_dict["age_result"])]
             gender_text = self.gender_categories[np.argmax(pred_dict["gender_result"])]
